@@ -1,0 +1,56 @@
+##
+#
+# Compiz Earth plugin
+#
+# Copyright : (C) 2010 by Maxime Wack
+# E-mail    : maximewack(at)free(dot)fr
+#
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+##
+
+
+This is a plugin for Compiz 0.8 branch that allows user to have a 3D earth inside the cube, with realtime day and night.
+Cube must, of course, be enabled.
+Configure using ccsm. You can set the center of the view to your location, specifying longitude and latitude.
+Don't forget to set your timezone. Daylight Savings Time is automatic.
+
+Installation :
+libGLEW is required !
+
+$make && make install
+
+Read changelog about updating from the very first version.
+
+skydome.png in data dir (installed to ~/.compiz/data/) is to be used as an animated skydome.
+It's a view of all the outer space visible from earth.
+
+You don't have to specify texture files anymore, the plugin will automatically retrieve a day.png file for the day texture in ~/.compiz/data/.
+For smaller screens, or graphic adapters with a small amount of video memory, you can resize the texture to yet a smaller size (please use power of two factors, it will be easier for your video card).
+
+
+
+Changelog :
+
+2011/08/18
+Rewrote the entire plugin to be cleaner, faster (or using less ressources), with correct comments in English and in line with the compiz coding style.
+Now the plugin automatically retrieves its textures from ~/.compiz/data/.
+Corrected a bug when loading the textures.
+Hardcoded the sphere generation to get rid of the GLU dependency.
+Translated the configuration in English.
+Resized skydome.png, day.png and night.png (not used yet) to a smaller yet still detailed enough resolution.
+If you are updating from the first version, you can clean ~/.compiz/data, as for now any other file than day.png and skydome.png is not used.
+
+2011/08/20
+Shader support !!! The plugin will determine itself if shader are supported and use them (earth.vert and earth.frag in the data dir)
+New cool effects : multitexture with night texture. Per-pixel lighting and specular reflexion on oceans.
+libGLEW is now required to build the plugin.
