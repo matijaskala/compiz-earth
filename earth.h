@@ -58,7 +58,7 @@ typedef struct _EarthScreen
     
     /* Config parameters */
     float lon, lat;
-    int tz;
+    float tz;
     
     /* Sun position */
     float dec, gha;

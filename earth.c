@@ -35,8 +35,8 @@ earthPreparePaintScreen (CompScreen *s,
     /* Earth and Sun positions calculations */
     es->timer = time (NULL);
     es->temps = localtime (&es->timer);
-    es->dec = 23.45f * cos((6.2831f/365.0f)*(es->temps->tm_yday+10.0f));
-    es->gha = es->temps->tm_hour-(es->tz + es->temps->tm_isdst) + (float)es->temps->tm_min/60;
+    es->dec = 23.45f * cos((6.2831f/365.0f)*((float)es->temps->tm_yday+10.0f));
+    es->gha = (float)es->temps->tm_hour-(es->tz + (float)es->temps->tm_isdst) + (float)es->temps->tm_min/60.00f;
 
     UNWRAP (es, s, preparePaintScreen);
     (*s->preparePaintScreen) (s, ms);
@@ -111,10 +111,10 @@ earthPaintInside (CompScreen              *s,
     {
 	glUseProgram(es->earthprog);
 	
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture (GL_TEXTURE0);
 	enableTexture (s, es->daytex, COMP_TEXTURE_FILTER_GOOD);
 	
-	glActiveTexture(GL_TEXTURE1);
+	glActiveTexture (GL_TEXTURE1);
 	enableTexture (s, es->nighttex, COMP_TEXTURE_FILTER_GOOD);
 	
 	/* Pass the textures to the shader */
@@ -133,7 +133,7 @@ earthPaintInside (CompScreen              *s,
     {
 	glUseProgram(0);
 	disableTexture (s, es->nighttex);
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture (GL_TEXTURE0);
 	disableTexture (s, es->daytex);
     }
     else
@@ -255,7 +255,7 @@ earthInitScreen (CompPlugin *p,
     /* Texture loading and creation */
     asprintf (&es->daytexfile, "%s%s", es->datapath, "day.png");
     asprintf (&es->nighttexfile, "%s%s", es->datapath, "night.png");
-    
+
     es->daytex = createTexture (s);
     readImageToTexture (s, es->daytex, es->daytexfile, 0, 0);
     es->nighttex = createTexture (s);
@@ -322,10 +322,10 @@ earthInitScreen (CompPlugin *p,
     
     if (es->shadersupport) /* Enable specular only with shader support because of the specific treatment in the shader (spec on water only) */
     {
-	es->earth.shininess = 100.0;
-	es->earth.specular[0] = 1;
-	es->earth.specular[1] = 1;
-	es->earth.specular[2] = 0.7;
+	es->earth.shininess = 50.0;
+	es->earth.specular[0] = 0.5;
+	es->earth.specular[1] = 0.5;
+	es->earth.specular[2] = 0.4;
 	es->earth.specular[3] = 1;
     }
     

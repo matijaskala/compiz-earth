@@ -30,13 +30,13 @@
 				<default>0</default>
 				<precision>0.1</precision>
 			</option>
-			<option name="timezone" type="int">
+			<option name="timezone" type="float">
 				<_short>Time Zone</_short>
 				<_long>Time difference from GMT (without taking account of DST)</_long>
 				<min>-12</min>
 				<max>12</max>
 				<default>0</default>
-				<precision>1</precision>
+				<precision>0.5</precision>
 			</option>
 		</screen>
 	</plugin>
