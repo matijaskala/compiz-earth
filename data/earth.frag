@@ -18,15 +18,14 @@ void main()
     
     vec4 color;
         
-    if (NdotL == 0)
-	color = 0.5 * nighttexel;
-    else
+    color = (ambient + NdotL*diffuse) * daytexel;
+    
+    if (nighttexel.b < nighttexel.r)
     {
-	float coeff = smoothstep (0.6,1,1-NdotL);
-	color = NdotL * diffuse * daytexel + min(coeff, 0.5) * nighttexel;
-	//color = NdotL * diffuse * daytexel + min((1-NdotL),0.6)*nighttexel;
+	float coeff = smoothstep (0.85, 1, 1 - NdotL);
+	color += nighttexel * coeff;
     }
-    //color = ambient + NdotL*diffuse*daytexel;
+    
     
     if (NdotL > 0 && (daytexel.b>0.1 && daytexel.r<0.1) || (daytexel.r>0.9 && daytexel.g>0.9 && daytexel.b>0.9))
     {

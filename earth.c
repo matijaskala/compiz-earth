@@ -94,10 +94,10 @@ earthPaintInside (CompScreen              *s,
 	glUseProgram(es->earthprog);
 	
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, es->daytex->name);
+	enableTexture (s, es->daytex, COMP_TEXTURE_FILTER_GOOD);
 	
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, es->nighttex->name);
+	enableTexture (s, es->nighttex, COMP_TEXTURE_FILTER_GOOD);
 	
 	/* Pass the textures to the shader */
         es->daytexloc = glGetUniformLocation (es->earthprog, "daytex");
@@ -114,9 +114,9 @@ earthPaintInside (CompScreen              *s,
     if (es->shadersupport)
     {
 	glUseProgram(0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	disableTexture (s, es->nighttex);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	disableTexture (s, es->daytex);
     }
     else
 	disableTexture (s, es->daytex);
@@ -298,13 +298,18 @@ earthInitScreen (CompPlugin *p,
 	
 	es->earth.ambient[i] = 0.2;
 	es->earth.diffuse[i] = 1;
-	if (es->shadersupport)		/* Enable specular only with shader support because of the specific treatment in the shader (spec on water only) */
-	    es->earth.specular[i] = 0.5;
-	else
-	    es->earth.specular[i] = 0;
+	es->earth.specular[i] = 0;
     }
     es->sun.position[1] = 1;
-    es->earth.shininess = 100.0;
+    
+    if (es->shadersupport) /* Enable specular only with shader support because of the specific treatment in the shader (spec on water only) */
+    {
+	es->earth.shininess = 100.0;
+	es->earth.specular[0] = 1;
+	es->earth.specular[1] = 1;
+	es->earth.specular[2] = 0.7;
+	es->earth.specular[3] = 1;
+    }
     
     glLightfv (GL_LIGHT1, GL_AMBIENT, es->sun.ambient);
     glLightfv (GL_LIGHT1, GL_DIFFUSE, es->sun.diffuse);
