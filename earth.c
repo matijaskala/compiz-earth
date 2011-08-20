@@ -4,6 +4,27 @@
 int earthDisplayPrivateIndex;
 int cubeDisplayPrivateIndex;
 
+static void
+earthScreenOptionChanged (CompScreen		*s,
+			  CompOption		*opt,
+			  EarthScreenOptions	num)
+{
+    EARTH_SCREEN (s);
+    switch (num)
+    {
+	case EarthScreenOptionLatitude:
+	    es->lat = earthGetLatitude (s);
+	break;
+	case EarthScreenOptionLongitude:
+	    es->lon = earthGetLongitude (s);
+	break;
+	case EarthScreenOptionTimezone:
+	    es->tz = earthGetTimezone (s);
+	break;
+	default:
+	break;
+    }
+}
 
 static void
 earthPreparePaintScreen (CompScreen *s,
@@ -14,9 +35,6 @@ earthPreparePaintScreen (CompScreen *s,
     /* Earth and Sun positions calculations */
     es->timer = time (NULL);
     es->temps = localtime (&es->timer);
-    es->lon = earthGetLongitude (s);
-    es->lat = earthGetLatitude (s);
-    es->tz = earthGetTimezone (s);
     es->dec = 23.45f * cos((6.2831f/365.0f)*(es->temps->tm_yday+10.0f));
     es->gha = es->temps->tm_hour-(es->tz + es->temps->tm_isdst) + (float)es->temps->tm_min/60;
 
@@ -327,7 +345,9 @@ earthInitScreen (CompPlugin *p,
     glEndList ();
     
     /* BCOP */
-    /*arthSet/Option/Notify				(s, earth/(fonction)OptionChange); */
+    earthSetLatitudeNotify (s, earthScreenOptionChanged);
+    earthSetLongitudeNotify (s, earthScreenOptionChanged);
+    earthSetTimezoneNotify (s, earthScreenOptionChanged);
     
     WRAP (es, s, donePaintScreen, earthDonePaintScreen);
     WRAP (es, s, preparePaintScreen, earthPreparePaintScreen);

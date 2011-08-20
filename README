@@ -54,3 +54,5 @@ If you are updating from the first version, you can clean ~/.compiz/data, as for
 Shader support !!! The plugin will determine itself if shader are supported and use them (earth.vert and earth.frag in the data dir)
 New cool effects : multitexture with night texture. Per-pixel lighting and specular reflexion on oceans.
 libGLEW is now required to build the plugin.
+
+For future changes, check the git commit messages !
