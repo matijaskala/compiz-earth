@@ -67,17 +67,10 @@ earthPaintInside (CompScreen              *s,
     glTranslatef (cs->outputXOffset, -cs->outputYOffset, 0.0f);
     glScalef (cs->outputXScale, cs->outputYScale, 1.0f);
 
-    Bool enabledCull = FALSE;
+    /* Pushing all the attribs I'm about to eventually modify*/
+    glPushAttrib (GL_COLOR_BUFFER_BIT | GL_TEXTURE_BIT | GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT |GL_ENABLE_BIT);
 
-    glPushAttrib (GL_COLOR_BUFFER_BIT | GL_TEXTURE_BIT);
-
-    glDisable (GL_BLEND);
-
-    if (!glIsEnabled (GL_CULL_FACE) )
-    {
-	enabledCull = TRUE;
-	glEnable (GL_CULL_FACE);
-    }
+    glEnable (GL_CULL_FACE);
 
     glEnable (GL_DEPTH_TEST); 
 
@@ -103,6 +96,9 @@ earthPaintInside (CompScreen              *s,
 	glRotatef (-es->dec, 1, 0, 0);
 
 	glLightfv (GL_LIGHT1, GL_POSITION, es->sun.position);
+	glLightfv (GL_LIGHT1, GL_AMBIENT, es->sun.ambient);
+	glLightfv (GL_LIGHT1, GL_DIFFUSE, es->sun.diffuse);
+	glLightfv (GL_LIGHT1, GL_SPECULAR, es->sun.specular);
 	
     glPopMatrix ();
     
@@ -141,19 +137,9 @@ earthPaintInside (CompScreen              *s,
     
     
     glDisable (GL_LIGHT1);
-    glLightModeli (GL_LIGHT_MODEL_LOCAL_VIEWER, GL_FALSE);
-    glEnable (GL_COLOR_MATERIAL);
 
-    /* Back to standard openGL settings */
+    /* Restore previous state */
     glPopMatrix ();
-    
-    if (!s->lighting)
-	glDisable (GL_LIGHTING);
-
-    glDisable (GL_DEPTH_TEST);
-
-    if (enabledCull)
-	glDisable (GL_CULL_FACE);
 
     glPopAttrib();
 	glPopMatrix();
@@ -314,7 +300,7 @@ earthInitScreen (CompPlugin *p,
 	es->sun.specular[i] = 1;
 	es->sun.position[i] = 0;
 	
-	es->earth.ambient[i] = 0.2;
+	es->earth.ambient[i] = 0.1;
 	es->earth.diffuse[i] = 1;
 	es->earth.specular[i] = 0;
     }
@@ -329,9 +315,6 @@ earthInitScreen (CompPlugin *p,
 	es->earth.specular[3] = 1;
     }
     
-    glLightfv (GL_LIGHT1, GL_AMBIENT, es->sun.ambient);
-    glLightfv (GL_LIGHT1, GL_DIFFUSE, es->sun.diffuse);
-    glLightfv (GL_LIGHT1, GL_SPECULAR, es->sun.specular);
     
     /* Display list creation */
     es->spherelist = glGenLists (1);

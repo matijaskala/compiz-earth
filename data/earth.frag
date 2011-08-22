@@ -22,12 +22,9 @@ void main()
     /* Ambient and diffuse light with day texture */    
     color = (ambient + NdotL*diffuse) * daytexel;
     
-    /* If there's city light on the night texture, display it in full on the night side and with a gradient on the day side */
-    if (nighttexel.b < nighttexel.r)
-    {
-	float coeff = smoothstep (0.9, 1, 1 - NdotL);
-	color += nighttexel * coeff;
-    }
+    /* Display the night lights on top of the night side, with a little gradient.*/
+    float coeff = smoothstep (0.9, 1, 1 - NdotL);
+    color += nighttexel * coeff;
     
     
     if (NdotL > 0)
@@ -35,7 +32,7 @@ void main()
 	halfVect_ = normalize (halfVect);
 	NdotHV = max (dot (normal_, halfVect_), 0.0);    
 	/* Display a specular reflexion if we are on ocean or ice */
-	if ((daytexel.b>0.1 && daytexel.r<0.1) || (daytexel.r>0.9 && daytexel.g>0.9 && daytexel.b>0.9))
+	if ((daytexel.b>0.1 && daytexel.r<0.2) || (daytexel.r>0.8 && daytexel.g>0.9 && daytexel.b>0.9))
 	    color += gl_LightSource[1].specular * gl_FrontMaterial.specular * pow(NdotHV, gl_FrontMaterial.shininess);
 	else
 	    color += 0.3 * gl_LightSource[1].specular * gl_FrontMaterial.specular * pow(NdotHV, gl_FrontMaterial.shininess/4);
