@@ -9,7 +9,7 @@ void main()
     lightDir = normalize (vec3(gl_LightSource[1].position));
     
     /* Light */
-    ambient = gl_LightSource[1].ambient * gl_FrontMaterial.ambient;
+    ambient = (gl_LightSource[1].ambient + gl_LightModel.ambient) * gl_FrontMaterial.ambient;
     diffuse = gl_LightSource[1].diffuse * gl_FrontMaterial.diffuse;
     
     /* Texture */

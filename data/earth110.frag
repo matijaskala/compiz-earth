@@ -1,5 +1,3 @@
-#version 130
-
 uniform sampler2D daytex, nighttex;
 
 varying vec3 normal, halfVect, lightDir;
@@ -25,7 +23,7 @@ void main()
     color = (ambient + NdotL*diffuse) * daytexel;
     
     /* Display the night lights on top of the night side, with a little gradient.*/
-    float coeff = smoothstep (0.9, 1, 1 - NdotL);
+    float coeff = mix (0, 1, clamp (1 - NdotL, 0.9, 1)*10 -9);
     
     color += nighttexel * coeff;
     

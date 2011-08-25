@@ -87,7 +87,7 @@ earthPaintInside (CompScreen              *s,
     /* Pushing all the attribs I'm about to modify*/
     glPushAttrib (GL_COLOR_BUFFER_BIT | GL_TEXTURE_BIT | GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT |GL_ENABLE_BIT);
 
-    glEnable (GL_CULL_FACE);
+    //glEnable (GL_CULL_FACE);
 
     glEnable (GL_DEPTH_TEST); 
 
@@ -281,13 +281,18 @@ earthInitScreen (CompPlugin *p,
 	es->earthfrag = glCreateShader (GL_FRAGMENT_SHADER);
 	
 	asprintf (&es->earthvertfile, "%s%s", es->datapath, "earth.vert");
-	asprintf (&es->earthfragfile, "%s%s", es->datapath, "earth.frag");
+	//load a different shader according to GLSL version
+	if (glewIsSupported ("GL_VERSION_3_0"))
+	    asprintf (&es->earthfragfile, "%s%s", es->datapath, "earth.frag");
+	else
+	    asprintf (&es->earthfragfile, "%s%s", es->datapath, "earth110.frag");
 	
 	es->earthvertsource = LoadSource (es->earthvertfile);
 	es->earthfragsource = LoadSource (es->earthfragfile);
 	
 	glShaderSource (es->earthvert, 1, (const GLchar**)&es->earthvertsource, NULL);
 	glShaderSource (es->earthfrag, 1, (const GLchar**)&es->earthfragsource, NULL);
+	
 	
 	glCompileShader (es->earthvert);
 	glCompileShader (es->earthfrag);
