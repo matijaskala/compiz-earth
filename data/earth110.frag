@@ -23,7 +23,7 @@ void main()
     color = (ambient + NdotL*diffuse) * daytexel;
     
     /* Display the night lights on top of the night side, with a little gradient.*/
-    float coeff = mix (0, 1, clamp (1 - NdotL, 0.9, 1)*10 -9);
+    float coeff = clamp((1-NdotL-0.9)*10 ,0,1);
     
     color += nighttexel * coeff;
     
