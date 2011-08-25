@@ -21,6 +21,23 @@ earthScreenOptionChanged (CompScreen		*s,
 	case EarthScreenOptionTimezone:
 	    es->tz = earthGetTimezone (s);
 	break;
+	case EarthScreenOptionShaders:
+	    es->shaders = earthGetShaders (s);
+	    if (opt->value.b == TRUE)
+	    {
+	    	es->earth.specular[0] = 0.5;
+		es->earth.specular[1] = 0.5;
+		es->earth.specular[2] = 0.4;
+		es->earth.specular[3] = 1;
+	    }
+	    else
+	    {
+	    	es->earth.specular[0] = 0;
+		es->earth.specular[1] = 0;
+		es->earth.specular[2] = 0;
+		es->earth.specular[3] = 0;
+	    }
+	break;
 	default:
 	break;
     }
@@ -67,7 +84,7 @@ earthPaintInside (CompScreen              *s,
     glTranslatef (cs->outputXOffset, -cs->outputYOffset, 0.0f);
     glScalef (cs->outputXScale, cs->outputYScale, 1.0f);
 
-    /* Pushing all the attribs I'm about to eventually modify*/
+    /* Pushing all the attribs I'm about to modify*/
     glPushAttrib (GL_COLOR_BUFFER_BIT | GL_TEXTURE_BIT | GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT |GL_ENABLE_BIT);
 
     glEnable (GL_CULL_FACE);
@@ -80,7 +97,6 @@ earthPaintInside (CompScreen              *s,
     glEnable (GL_LIGHTING);
     glEnable (GL_LIGHT1);
     glDisable (GL_COLOR_MATERIAL);
-    glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     
     float ratio = (float)s->height / (float)s->width;
     glScalef (ratio, 1.0f, ratio);
@@ -103,7 +119,12 @@ earthPaintInside (CompScreen              *s,
     glPopMatrix ();
     
     /* Earth display */
-    if (es->shadersupport)
+    glMaterialfv(GL_FRONT, GL_AMBIENT, es->earth.ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, es->earth.diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, es->earth.specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, es->earth.shininess);
+    
+    if (es->shadersupport && es->shaders)
     {
 	glUseProgram(es->earthprog);
 	
@@ -125,7 +146,7 @@ earthPaintInside (CompScreen              *s,
 	
     glCallList (es->spherelist);
     
-    if (es->shadersupport)
+    if (es->shadersupport && es->shaders)
     {
 	glUseProgram(0);
 	disableTexture (s, es->nighttex);
@@ -306,24 +327,12 @@ earthInitScreen (CompPlugin *p,
     }
     es->sun.position[1] = 1;
     
-    if (es->shadersupport) /* Enable specular only with shader support because of the specific treatment in the shader (spec on water only) */
-    {
-	es->earth.shininess = 50.0;
-	es->earth.specular[0] = 0.5;
-	es->earth.specular[1] = 0.5;
-	es->earth.specular[2] = 0.4;
-	es->earth.specular[3] = 1;
-    }
-    
+    es->earth.shininess = 50.0; 
     
     /* Display list creation */
     es->spherelist = glGenLists (1);
     
     glNewList (es->spherelist, GL_COMPILE);
-	glMaterialfv(GL_FRONT, GL_AMBIENT, es->earth.ambient);
-	glMaterialfv(GL_FRONT, GL_DIFFUSE, es->earth.diffuse);
-	glMaterialfv(GL_FRONT, GL_SPECULAR, es->earth.specular);
-	glMaterialf(GL_FRONT, GL_SHININESS, es->earth.shininess);
 	makeSphere (0.75);
     glEndList ();
     
@@ -331,6 +340,9 @@ earthInitScreen (CompPlugin *p,
     earthSetLatitudeNotify (s, earthScreenOptionChanged);
     earthSetLongitudeNotify (s, earthScreenOptionChanged);
     earthSetTimezoneNotify (s, earthScreenOptionChanged);
+    earthSetShadersNotify (s, earthScreenOptionChanged);
+    
+    earthScreenOptionChanged (s, earthGetShadersOption (s),EarthScreenOptionShaders);
     
     WRAP (es, s, donePaintScreen, earthDonePaintScreen);
     WRAP (es, s, preparePaintScreen, earthPreparePaintScreen);

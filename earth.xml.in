@@ -38,6 +38,11 @@
 				<default>0</default>
 				<precision>0.5</precision>
 			</option>
+			<option name="shaders" type="bool">
+				<_short>Use shaders</_short>
+				<_long>Make use of the shaders if possible</_long>
+				<default>true</default>
+			</option>
 		</screen>
 	</plugin>
 </compiz>
