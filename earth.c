@@ -144,7 +144,7 @@ earthPaintInside (CompScreen              *s,
     else
 	enableTexture (s, es->daytex, COMP_TEXTURE_FILTER_GOOD);
 	
-    glCallList (es->spherelist);
+    glCallList (es->earthlist);
     
     if (es->shadersupport && es->shaders)
     {
@@ -180,9 +180,38 @@ earthClearTargetOutput (CompScreen *s,
     EARTH_SCREEN (s);
     CUBE_SCREEN (s);
     
+    
+    glDisable (GL_LIGHTING);  
+    
+    glPushMatrix();
+    float ratio = (float)s->height / (float)s->width;
+    glScalef (ratio, 1.0f, ratio);
+    
+    
+    glRotatef (vRotate - 90, 1.0f, 0.0f, 0.0f);
+    glRotatef (xRotate, 0.0f, 0.0f, 1.0f);
+    glRotatef (es->lat, 1, 0, 0);
+    glRotatef (es->lon + 180, 0, 0, 1);
+    
+    enableTexture (s, es->skytex, COMP_TEXTURE_FILTER_GOOD);
+    glCallList (es->skylist);
+    disableTexture (s, es->skytex);
+
+    
+    glRotatef (-es->gha*15, 0, 0, 1);
+    glRotatef (es->dec, 1, 0, 0);
+    
+    glTranslatef (0, -5, 0);
+    glCallList (es->sunlist);
+    
+    glPopMatrix();
+    
+    glEnable (GL_LIGHTING);
+    
 	
     UNWRAP (es, cs, clearTargetOutput);
-    (*cs->clearTargetOutput) (s, xRotate, vRotate);
+    /* Override CubeClearTargetOutput, as it will either draw its own skydome, or blank the screen
+    (*cs->clearTargetOutput) (s, xRotate, vRotate);*/
     WRAP (es, cs, clearTargetOutput, earthClearTargetOutput);
 
     glClear (GL_DEPTH_BUFFER_BIT);
@@ -262,12 +291,14 @@ earthInitScreen (CompPlugin *p,
     /* Texture loading and creation */
     asprintf (&es->daytexfile, "%s%s", es->datapath, "day.png");
     asprintf (&es->nighttexfile, "%s%s", es->datapath, "night.png");
+    asprintf (&es->skytexfile, "%s%s", es->datapath, "skydome.png");
 
     es->daytex = createTexture (s);
     readImageToTexture (s, es->daytex, es->daytexfile, 0, 0);
     es->nighttex = createTexture (s);
     readImageToTexture (s, es->nighttex, es->nighttexfile, 0, 0);
-    
+    es->skytex = createTexture (s);
+    readImageToTexture (s, es->skytex, es->skytexfile, 0, 0);
     
     /* Shader support */
     glewInit ();
@@ -281,7 +312,7 @@ earthInitScreen (CompPlugin *p,
 	es->earthfrag = glCreateShader (GL_FRAGMENT_SHADER);
 	
 	asprintf (&es->earthvertfile, "%s%s", es->datapath, "earth.vert");
-	//load a different shader according to GLSL version
+	/* Load a different shader according to GLSL version */
 	if (glewIsSupported ("GL_VERSION_3_0"))
 	    asprintf (&es->earthfragfile, "%s%s", es->datapath, "earth.frag");
 	else
@@ -316,6 +347,7 @@ earthInitScreen (CompPlugin *p,
     free (es->datapath);
     free (es->daytexfile);
     free (es->nighttexfile);
+    free (es->skytexfile);
     
     
     /* Lighting and material settings */
@@ -335,10 +367,20 @@ earthInitScreen (CompPlugin *p,
     es->earth.shininess = 50.0; 
     
     /* Display list creation */
-    es->spherelist = glGenLists (1);
+    es->earthlist = glGenLists (1);
+    es->skylist = glGenLists (1);
+    es->sunlist = glGenLists (1);
     
-    glNewList (es->spherelist, GL_COMPILE);
-	makeSphere (0.75);
+    glNewList (es->earthlist, GL_COMPILE);
+	makeSphere (0.75, FALSE);
+    glEndList ();
+    
+    glNewList (es->skylist, GL_COMPILE);
+	makeSphere (10, TRUE);
+    glEndList ();
+    
+    glNewList (es->sunlist, GL_COMPILE);
+	makeSphere (0.1, TRUE);
     glEndList ();
     
     /* BCOP */
@@ -365,9 +407,12 @@ earthFiniScreen (CompPlugin *p,
     CUBE_SCREEN (s);
     
     /* Free display list */
-    glDeleteLists (es->spherelist, 1);
+    glDeleteLists (es->earthlist, 1);
+    glDeleteLists (es->skylist, 1);
+    glDeleteLists (es->sunlist, 1);
 
     /* Free textures data */
+    destroyTexture (s, es->skytex);
     destroyTexture (s, es->nighttex);
     destroyTexture (s, es->daytex);
     
@@ -462,7 +507,7 @@ getCompPluginInfo (void)
     return &earthVTable;
 }
 
-void makeSphere (GLdouble radius)
+void makeSphere (GLdouble radius, GLboolean inside)
 {
     GLint i,j;
     GLfloat PI = 3.14159265358979323846;
@@ -491,8 +536,16 @@ void makeSphere (GLdouble radius)
     for (j = 0; j <= 64; j++)
     {
 	angle = PI * j / 64;
-	sinCache2b[j] = sinf (angle); // -SIN si inside
-	cosCache2b[j] = cosf (angle);// -COS si inside
+	if (!inside)
+	{
+	    sinCache2b[j] = sinf (angle);
+	    cosCache2b[j] = cosf (angle);
+	}
+	else
+	{
+	    sinCache2b[j] = -sinf (angle);
+	    cosCache2b[j] = -cosf (angle);
+	}
 	sinCache1b[j] = radius * sinf (angle);
 	cosCache1b[j] = radius * cosf (angle);
     }
@@ -512,22 +565,48 @@ void makeSphere (GLdouble radius)
         sintemp1 = sinCache1b[j];
         sintemp2 = sinCache1b[j+1];
         
-        sintemp3 = sinCache2b[j+1]; // +0 si inside
-        costemp3 = cosCache2b[j+1]; // +0 si inside
-        sintemp4 = sinCache2b[j]; // +1 si inside
-        costemp4 = cosCache2b[j]; // +1 si inside
+	if (!inside)
+	{
+	    sintemp3 = sinCache2b[j+1];
+	    costemp3 = cosCache2b[j+1];
+	    sintemp4 = sinCache2b[j];
+	    costemp4 = cosCache2b[j];
+	}
+	else
+	{
+	    sintemp3 = sinCache2b[j];
+	    costemp3 = cosCache2b[j];
+	    sintemp4 = sinCache2b[j+1];
+	    costemp4 = cosCache2b[j+1];
+	}
 
 
         glBegin (GL_QUAD_STRIP);
 	    for (i = 0; i <= 64; i++)
 	    {
 		glNormal3f(sinCache2a[i] * sintemp3, cosCache2a[i] * sintemp3, costemp3);
-		glTexCoord2f(1 - (float) i / 64, 1 - (float) (j+1) / 64); //si inside (j+1) -> j
-		glVertex3f(sintemp2 * sinCache1a[i], sintemp2 * cosCache1a[i], zHigh); //si inside sintemp1 à la place de sintemp2 aux deux, zHigh -> zLow
+		if (!inside)
+		{
+		    glTexCoord2f(1 - (float) i / 64, 1 - (float) (j+1) / 64);
+		    glVertex3f(sintemp2 * sinCache1a[i], sintemp2 * cosCache1a[i], zHigh);
+		}
+		else
+		{
+		    glTexCoord2f(1 - (float) i / 64, 1 - (float) j / 64);
+		    glVertex3f(sintemp1 * sinCache1a[i], sintemp1 * cosCache1a[i], zLow);
+		}
     	    
 		glNormal3f(sinCache2a[i] * sintemp4, cosCache2a[i] * sintemp4, costemp4);
-		glTexCoord2f(1 - (float) i / 64, 1 - (float) j / 64); //si inside j -> j+1
-		glVertex3f(sintemp1 * sinCache1a[i], sintemp1 * cosCache1a[i], zLow); //si inside sintemp1 -> sintemp2, zLow -> zHigh
+		if (!inside)
+		{
+		    glTexCoord2f(1 - (float) i / 64, 1 - (float) j / 64);
+		    glVertex3f(sintemp1 * sinCache1a[i], sintemp1 * cosCache1a[i], zLow);
+		}
+		else
+		{
+		    glTexCoord2f(1 - (float) i / 64, 1 - (float) (j+1) / 64);
+		    glVertex3f(sintemp2 * sinCache1a[i], sintemp2 * cosCache1a[i], zHigh);
+		}
 	    }
         glEnd ();
     }

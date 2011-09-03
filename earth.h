@@ -68,12 +68,14 @@ typedef struct _EarthScreen
     char* datapath;
     char* daytexfile;
     char* nighttexfile;
+    char* skytexfile;
     CompTexture* daytex;
     CompTexture* nighttex;
+    CompTexture* skytex;
     
     /* Rendering */
     LightParam sun, earth;
-    GLuint spherelist;
+    GLuint earthlist, skylist, sunlist;
     
     /* Shaders */
     GLboolean shadersupport;
@@ -86,7 +88,7 @@ typedef struct _EarthScreen
     
 } EarthScreen;
 
-void makeSphere (GLdouble radius);
+void makeSphere (GLdouble radius, GLboolean inside);
 char* LoadSource (char *filename);
 
 #endif
