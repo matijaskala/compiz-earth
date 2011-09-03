@@ -25,17 +25,17 @@ earthScreenOptionChanged (CompScreen		*s,
 	    es->shaders = earthGetShaders (s);
 	    if (opt->value.b == TRUE)
 	    {
-	    	es->earth.specular[0] = 0.5;
-		es->earth.specular[1] = 0.5;
-		es->earth.specular[2] = 0.4;
-		es->earth.specular[3] = 1;
+	    	es->light[EARTH].specular[0] = 0.5;
+		es->light[EARTH].specular[1] = 0.5;
+		es->light[EARTH].specular[2] = 0.4;
+		es->light[EARTH].specular[3] = 1;
 	    }
 	    else
 	    {
-	    	es->earth.specular[0] = 0;
-		es->earth.specular[1] = 0;
-		es->earth.specular[2] = 0;
-		es->earth.specular[3] = 0;
+	    	es->light[EARTH].specular[0] = 0;
+		es->light[EARTH].specular[1] = 0;
+		es->light[EARTH].specular[2] = 0;
+		es->light[EARTH].specular[3] = 0;
 	    }
 	break;
 	default:
@@ -87,8 +87,6 @@ earthPaintInside (CompScreen              *s,
     /* Pushing all the attribs I'm about to modify*/
     glPushAttrib (GL_COLOR_BUFFER_BIT | GL_TEXTURE_BIT | GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT |GL_ENABLE_BIT);
 
-    //glEnable (GL_CULL_FACE);
-
     glEnable (GL_DEPTH_TEST); 
 
     glPushMatrix();
@@ -96,6 +94,7 @@ earthPaintInside (CompScreen              *s,
     /* Actual display */
     glEnable (GL_LIGHTING);
     glEnable (GL_LIGHT1);
+    glEnable (GL_BLEND);
     glDisable (GL_COLOR_MATERIAL);
     
     float ratio = (float)s->height / (float)s->width;
@@ -111,50 +110,62 @@ earthPaintInside (CompScreen              *s,
 	glRotatef (-es->gha*15, 0, 0, 1);
 	glRotatef (-es->dec, 1, 0, 0);
 
-	glLightfv (GL_LIGHT1, GL_POSITION, es->sun.position);
-	glLightfv (GL_LIGHT1, GL_AMBIENT, es->sun.ambient);
-	glLightfv (GL_LIGHT1, GL_DIFFUSE, es->sun.diffuse);
-	glLightfv (GL_LIGHT1, GL_SPECULAR, es->sun.specular);
+	glLightfv (GL_LIGHT1, GL_POSITION, es->light[SUN].position);
+	glLightfv (GL_LIGHT1, GL_AMBIENT, es->light[SUN].ambient);
+	glLightfv (GL_LIGHT1, GL_DIFFUSE, es->light[SUN].diffuse);
+	glLightfv (GL_LIGHT1, GL_SPECULAR, es->light[SUN].specular);
 	
     glPopMatrix ();
     
     /* Earth display */
-    glMaterialfv(GL_FRONT, GL_AMBIENT, es->earth.ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, es->earth.diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, es->earth.specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, es->earth.shininess);
+    glBlendFunc (GL_ONE, GL_ZERO);
+    
+    glMaterialfv(GL_FRONT, GL_AMBIENT, es->light[EARTH].ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, es->light[EARTH].diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, es->light[EARTH].specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, es->light[EARTH].shininess);
     
     if (es->shadersupport && es->shaders)
     {
-	glUseProgram(es->earthprog);
+	glUseProgram(es->prog[EARTH]);
 	
 	glActiveTexture (GL_TEXTURE0);
-	enableTexture (s, es->daytex, COMP_TEXTURE_FILTER_GOOD);
+	enableTexture (s, es->tex[DAY], COMP_TEXTURE_FILTER_GOOD);
 	
 	glActiveTexture (GL_TEXTURE1);
-	enableTexture (s, es->nighttex, COMP_TEXTURE_FILTER_GOOD);
+	enableTexture (s, es->tex[NIGHT], COMP_TEXTURE_FILTER_GOOD);
 	
 	/* Pass the textures to the shader */
-        es->daytexloc = glGetUniformLocation (es->earthprog, "daytex");
-        es->nighttexloc = glGetUniformLocation (es->earthprog, "nighttex");
+        es->texloc[DAY] = glGetUniformLocation (es->prog[EARTH], "daytex");
+        es->texloc[NIGHT] = glGetUniformLocation (es->prog[EARTH], "nighttex");
 	
-        glUniform1i (es->daytexloc, 0);
-        glUniform1i (es->nighttexloc, 1);
+        glUniform1i (es->texloc[DAY], 0);
+        glUniform1i (es->texloc[NIGHT], 1);
     }
     else
-	enableTexture (s, es->daytex, COMP_TEXTURE_FILTER_GOOD);
+	enableTexture (s, es->tex[DAY], COMP_TEXTURE_FILTER_GOOD);
 	
-    glCallList (es->earthlist);
+	
+    glCallList (es->list[EARTH]);
+    
     
     if (es->shadersupport && es->shaders)
     {
 	glUseProgram(0);
-	disableTexture (s, es->nighttex);
+	disableTexture (s, es->tex[NIGHT]);
 	glActiveTexture (GL_TEXTURE0);
-	disableTexture (s, es->daytex);
+	disableTexture (s, es->tex[DAY]);
     }
     else
-	disableTexture (s, es->daytex);
+	disableTexture (s, es->tex[DAY]);
+	
+    // Clouds display
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    glMaterialfv(GL_FRONT, GL_SPECULAR, es->light[CLOUDS].specular);    
+    enableTexture (s, es->tex[CLOUDS], COMP_TEXTURE_FILTER_GOOD);
+	glCallList (es->list[CLOUDS]);
+    disableTexture (s, es->tex[CLOUDS]);
     
     
     glDisable (GL_LIGHT1);
@@ -187,22 +198,22 @@ earthClearTargetOutput (CompScreen *s,
     float ratio = (float)s->height / (float)s->width;
     glScalef (ratio, 1.0f, ratio);
     
-    
+    /* Rotate the skydome according to the mouse and the rotation of the Earth */
     glRotatef (vRotate - 90, 1.0f, 0.0f, 0.0f);
     glRotatef (xRotate, 0.0f, 0.0f, 1.0f);
     glRotatef (es->lat, 1, 0, 0);
     glRotatef (es->lon + 180, 0, 0, 1);
     
-    enableTexture (s, es->skytex, COMP_TEXTURE_FILTER_GOOD);
-    glCallList (es->skylist);
-    disableTexture (s, es->skytex);
+    enableTexture (s, es->tex[SKY], COMP_TEXTURE_FILTER_GOOD);
+    glCallList (es->list[SKY]);
+    disableTexture (s, es->tex[SKY]);
 
-    
+    /* Now rotate to the position of the sun */
     glRotatef (-es->gha*15, 0, 0, 1);
     glRotatef (es->dec, 1, 0, 0);
     
     glTranslatef (0, -5, 0);
-    glCallList (es->sunlist);
+    glCallList (es->list[SUN]);
     
     glPopMatrix();
     
@@ -287,18 +298,20 @@ earthInitScreen (CompPlugin *p,
     /* Get Compiz data directory */
     asprintf (&es->datapath, "%s%s",getenv("HOME"), "/.compiz/data/");
     
-    
     /* Texture loading and creation */
-    asprintf (&es->daytexfile, "%s%s", es->datapath, "day.png");
-    asprintf (&es->nighttexfile, "%s%s", es->datapath, "night.png");
-    asprintf (&es->skytexfile, "%s%s", es->datapath, "skydome.png");
+    asprintf (&es->texfile[DAY], "%s", "day.png");
+    asprintf (&es->texfile[NIGHT], "%s", "night.png");
+    asprintf (&es->texfile[SKY], "%s", "skydome.png");
+    asprintf (&es->texfile[CLOUDS], "%s", "clouds.png");
 
-    es->daytex = createTexture (s);
-    readImageToTexture (s, es->daytex, es->daytexfile, 0, 0);
-    es->nighttex = createTexture (s);
-    readImageToTexture (s, es->nighttex, es->nighttexfile, 0, 0);
-    es->skytex = createTexture (s);
-    readImageToTexture (s, es->skytex, es->skytexfile, 0, 0);
+    for (i=0; i<4; i++)
+    {
+	es->tex[i] = createTexture (s);
+	readImageToTexture (s, es->tex[i], es->texfile[i], 0, 0);
+    }
+    
+    for (i=0; i<4; i++)
+	free (es->texfile[i]);
     
     /* Shader support */
     glewInit ();
@@ -308,80 +321,95 @@ earthInitScreen (CompPlugin *p,
     if (es->shadersupport)
     {
 	/* Shader creation, loading and compiling */
-	es->earthvert = glCreateShader (GL_VERTEX_SHADER);
-	es->earthfrag = glCreateShader (GL_FRAGMENT_SHADER);
+	es->vert[EARTH] = glCreateShader (GL_VERTEX_SHADER);
+	es->frag[EARTH] = glCreateShader (GL_FRAGMENT_SHADER);
 	
-	asprintf (&es->earthvertfile, "%s%s", es->datapath, "earth.vert");
+	asprintf (&es->vertfile[EARTH], "%s%s", es->datapath, "earth.vert");
 	/* Load a different shader according to GLSL version */
 	if (glewIsSupported ("GL_VERSION_3_0"))
-	    asprintf (&es->earthfragfile, "%s%s", es->datapath, "earth.frag");
+	    asprintf (&es->fragfile[EARTH], "%s%s", es->datapath, "earth.frag");
 	else
-	    asprintf (&es->earthfragfile, "%s%s", es->datapath, "earth110.frag");
+	    asprintf (&es->fragfile[EARTH], "%s%s", es->datapath, "earth110.frag");
 	
-	es->earthvertsource = LoadSource (es->earthvertfile);
-	es->earthfragsource = LoadSource (es->earthfragfile);
+	es->vertsource[EARTH] = LoadSource (es->vertfile[EARTH]);
+	es->fragsource[EARTH] = LoadSource (es->fragfile[EARTH]);
 	
-	glShaderSource (es->earthvert, 1, (const GLchar**)&es->earthvertsource, NULL);
-	glShaderSource (es->earthfrag, 1, (const GLchar**)&es->earthfragsource, NULL);
+	glShaderSource (es->vert[EARTH], 1, (const GLchar**)&es->vertsource[EARTH], NULL);
+	glShaderSource (es->frag[EARTH], 1, (const GLchar**)&es->fragsource[EARTH], NULL);
 	
 	
-	glCompileShader (es->earthvert);
-	glCompileShader (es->earthfrag);
+	glCompileShader (es->vert[EARTH]);
+	glCompileShader (es->frag[EARTH]);
 	
 	/* Program creation, attaching and linking */
-	es->earthprog = glCreateProgram ();
+	es->prog[EARTH] = glCreateProgram ();
 	
-	glAttachShader (es->earthprog, es->earthvert);
-	glAttachShader (es->earthprog, es->earthfrag);
+	glAttachShader (es->prog[EARTH], es->vert[EARTH]);
+	glAttachShader (es->prog[EARTH], es->frag[EARTH]);
 	
-	glLinkProgram (es->earthprog);
+	glLinkProgram (es->prog[EARTH]);
 	
 	/* Cleanup */
-	free (es->earthvertsource);
-	free (es->earthfragsource);
-	free (es->earthvertfile);
-	free (es->earthfragfile);
+	free (es->vertsource[EARTH]);
+	free (es->fragsource[EARTH]);
+	free (es->vertfile[EARTH]);
+	free (es->fragfile[EARTH]);
     }
     
     /* Some cleanup */
     free (es->datapath);
-    free (es->daytexfile);
-    free (es->nighttexfile);
-    free (es->skytexfile);
-    
     
     /* Lighting and material settings */
     for (i=0; i<4; i++)
     {
-	es->sun.ambient[i] = 0.2;
-	es->sun.diffuse[i] = 1;
-	es->sun.specular[i] = 1;
-	es->sun.position[i] = 0;
+	es->light[SUN].ambient[i] = 0.2;
+	es->light[SUN].diffuse[i] = 1;
+	es->light[SUN].specular[i] = 1;
+	es->light[SUN].position[i] = 0;
 	
-	es->earth.ambient[i] = 0.1;
-	es->earth.diffuse[i] = 1;
-	es->earth.specular[i] = 0;
+	es->light[EARTH].ambient[i] = 0.1;
+	es->light[EARTH].diffuse[i] = 1;
+	es->light[EARTH].specular[i] = 0;
+	
+	es->light[CLOUDS].specular[i] = 0;
     }
-    es->sun.position[1] = 1;
+    es->light[SUN].position[1] = 1;
     
-    es->earth.shininess = 50.0; 
+    es->light[EARTH].shininess = 50.0; 
     
-    /* Display list creation */
-    es->earthlist = glGenLists (1);
-    es->skylist = glGenLists (1);
-    es->sunlist = glGenLists (1);
-    
-    glNewList (es->earthlist, GL_COMPILE);
-	makeSphere (0.75, FALSE);
-    glEndList ();
-    
-    glNewList (es->skylist, GL_COMPILE);
-	makeSphere (10, TRUE);
-    glEndList ();
-    
-    glNewList (es->sunlist, GL_COMPILE);
-	makeSphere (0.1, TRUE);
-    glEndList ();
+    /* Display lists creation */
+    es->list[0] = glGenLists (4);
+    for (i=0; i<4; i++)
+    {
+	GLdouble radius;
+	GLboolean inside;
+	
+	switch (i)
+	{
+	    case SUN:
+		radius = 0.1;
+		inside = TRUE;
+	    break;
+	    case EARTH:
+		radius = 0.75;
+		inside = FALSE;
+	    break;
+	    case CLOUDS:
+		radius = 0.76;
+		inside = FALSE;
+	    break;
+	    case SKY:
+		radius = 10;
+		inside = TRUE;
+	    break;
+	}
+	
+	es->list[i] = es->list[0] + i;
+	
+	glNewList (es->list[i], GL_COMPILE);
+	    makeSphere (radius, inside);
+	glEndList ();
+    }
     
     /* BCOP */
     earthSetLatitudeNotify (s, earthScreenOptionChanged);
@@ -406,26 +434,25 @@ earthFiniScreen (CompPlugin *p,
     EARTH_SCREEN (s);
     CUBE_SCREEN (s);
     
+    int i;
+    
     /* Free display list */
-    glDeleteLists (es->earthlist, 1);
-    glDeleteLists (es->skylist, 1);
-    glDeleteLists (es->sunlist, 1);
+    glDeleteLists (es->list[0], 4);
 
     /* Free textures data */
-    destroyTexture (s, es->skytex);
-    destroyTexture (s, es->nighttex);
-    destroyTexture (s, es->daytex);
+    for (i=0; i<4; i++)
+	destroyTexture (s, es->tex[i]);
     
     /* Detach and free shaders */
     if (es->shadersupport)
     {
-	glDetachShader(es->earthprog, es->earthvert);
-	glDetachShader(es->earthprog, es->earthfrag);
+	glDetachShader(es->prog[EARTH], es->vert[EARTH]);
+	glDetachShader(es->prog[EARTH], es->frag[EARTH]);
 	
-	glDeleteShader(es->earthvert);
-	glDeleteShader(es->earthfrag);
+	glDeleteShader(es->vert[EARTH]);
+	glDeleteShader(es->frag[EARTH]);
 	
-	glDeleteProgram(es->earthprog);
+	glDeleteProgram(es->prog[EARTH]);
     }
     
     
@@ -649,4 +676,3 @@ char* LoadSource (char* filename)
     
     return src;
 }
-

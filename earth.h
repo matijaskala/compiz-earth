@@ -26,11 +26,15 @@ extern int cubeDisplayPrivateIndex;
     ((EarthScreen *) (s)->base.privates[(ed)->screenPrivateIndex].ptr)
 #define EARTH_SCREEN(s) \
     EarthScreen *es = GET_EARTH_SCREEN(s, GET_EARTH_DISPLAY(s->display))
+    
+#define DAY	0
+#define NIGHT	1
+#define CLOUDS	2
+#define SKY	3
 
-typedef struct _EarthDisplay
-{
-    int screenPrivateIndex;
-} EarthDisplay;
+#define EARTH	0
+#define SUN	1
+
 
 typedef struct _LightParam
 {
@@ -41,6 +45,11 @@ typedef struct _LightParam
     GLfloat emission[4];
     GLfloat shininess;
 } LightParam;
+
+typedef struct _EarthDisplay
+{
+    int screenPrivateIndex;
+} EarthDisplay;
 
 typedef struct _EarthScreen
 {
@@ -64,27 +73,27 @@ typedef struct _EarthScreen
     /* Sun position */
     float dec, gha;
     
-    /* Textures */
+    /* Root path for data */
     char* datapath;
-    char* daytexfile;
-    char* nighttexfile;
-    char* skytexfile;
-    CompTexture* daytex;
-    CompTexture* nighttex;
-    CompTexture* skytex;
+    
+    /* Textures */
+    char* texfile [4];
+    CompTexture* tex [4];
     
     /* Rendering */
-    LightParam sun, earth;
-    GLuint earthlist, skylist, sunlist;
+    LightParam light [3];
+    GLuint list [4];
     
     /* Shaders */
     GLboolean shadersupport;
-    char* earthvertfile;
-    char* earthvertsource;
-    char* earthfragfile;
-    char* earthfragsource;
-    GLuint earthvert, earthfrag, earthprog;
-    GLint daytexloc, nighttexloc;
+    char* vertfile [1];
+    char* vertsource [1];
+    char* fragfile [1];
+    char* fragsource [1];
+    GLuint vert [1];
+    GLuint frag [1];
+    GLuint prog [1];
+    GLint texloc [2];
     
 } EarthScreen;
 
