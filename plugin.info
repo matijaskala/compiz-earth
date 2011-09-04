@@ -1,4 +1,4 @@
 PLUGIN = earth
 PKG_DEP = compiz-cube
 CHK_HEADERS = compiz-cube.h
-LDFLAGS_ADD = -lGLEW
+LDFLAGS_ADD = -lGLEW -pthread
