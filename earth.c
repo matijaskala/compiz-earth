@@ -12,15 +12,10 @@ earthScreenOptionChanged (CompScreen		*s,
     EARTH_SCREEN (s);
     switch (num)
     {
-	case EarthScreenOptionLatitude:
-	    es->lat = earthGetLatitude (s);
-	break;
-	case EarthScreenOptionLongitude:
-	    es->lon = earthGetLongitude (s);
-	break;
-	case EarthScreenOptionTimezone:
-	    es->tz = earthGetTimezone (s);
-	break;
+	case EarthScreenOptionLatitude:	    es->lat = earthGetLatitude (s);	break;
+	case EarthScreenOptionLongitude:    es->lon = earthGetLongitude (s);	break;
+	case EarthScreenOptionTimezone:	    es->tz  = earthGetTimezone (s);	break;
+	
 	case EarthScreenOptionShaders:
 	    es->shaders = earthGetShaders (s);
 	    if (opt->value.b == TRUE)
@@ -38,8 +33,8 @@ earthScreenOptionChanged (CompScreen		*s,
 		es->light[EARTH].specular[3] = 0;
 	    }
 	break;
-	default:
-	break;
+	
+	default:								break;
     }
 }
 
@@ -195,6 +190,7 @@ earthClearTargetOutput (CompScreen *s,
     glDisable (GL_LIGHTING);  
     
     glPushMatrix();
+    
     float ratio = (float)s->height / (float)s->width;
     glScalef (ratio, 1.0f, ratio);
     
@@ -294,72 +290,18 @@ earthInitScreen (CompPlugin *p,
 
     es->damage = FALSE;
     
-    
-    /* Get Compiz data directory */
-    asprintf (&es->datapath, "%s%s",getenv("HOME"), "/.compiz/data/");
-    
-    /* Texture loading and creation */
-    asprintf (&es->texfile[DAY], "%s", "day.png");
-    asprintf (&es->texfile[NIGHT], "%s", "night.png");
-    asprintf (&es->texfile[SKY], "%s", "skydome.png");
-    asprintf (&es->texfile[CLOUDS], "%s", "clouds.png");
-
+    /* Starting the texture images loading threads */
     for (i=0; i<4; i++)
     {
-	es->tex[i] = createTexture (s);
-	readImageToTexture (s, es->tex[i], es->texfile[i], 0, 0);
+	es->texthreaddata[i].s = s;
+	es->texthreaddata[i].num = i;
+	pthread_create (&es->texthreaddata[i].tid, NULL, LoadTexture_t, (void*) &es->texthreaddata[i]);
     }
     
-    for (i=0; i<4; i++)
-	free (es->texfile[i]);
+    /* Load the shaders */
+    CreateShaders(es);
     
-    /* Shader support */
-    glewInit ();
-    if (glewIsSupported ("GL_VERSION_2_0"))
-	es->shadersupport = GL_TRUE;
-    
-    if (es->shadersupport)
-    {
-	/* Shader creation, loading and compiling */
-	es->vert[EARTH] = glCreateShader (GL_VERTEX_SHADER);
-	es->frag[EARTH] = glCreateShader (GL_FRAGMENT_SHADER);
-	
-	asprintf (&es->vertfile[EARTH], "%s%s", es->datapath, "earth.vert");
-	/* Load a different shader according to GLSL version */
-	if (glewIsSupported ("GL_VERSION_3_0"))
-	    asprintf (&es->fragfile[EARTH], "%s%s", es->datapath, "earth.frag");
-	else
-	    asprintf (&es->fragfile[EARTH], "%s%s", es->datapath, "earth110.frag");
-	
-	es->vertsource[EARTH] = LoadSource (es->vertfile[EARTH]);
-	es->fragsource[EARTH] = LoadSource (es->fragfile[EARTH]);
-	
-	glShaderSource (es->vert[EARTH], 1, (const GLchar**)&es->vertsource[EARTH], NULL);
-	glShaderSource (es->frag[EARTH], 1, (const GLchar**)&es->fragsource[EARTH], NULL);
-	
-	
-	glCompileShader (es->vert[EARTH]);
-	glCompileShader (es->frag[EARTH]);
-	
-	/* Program creation, attaching and linking */
-	es->prog[EARTH] = glCreateProgram ();
-	
-	glAttachShader (es->prog[EARTH], es->vert[EARTH]);
-	glAttachShader (es->prog[EARTH], es->frag[EARTH]);
-	
-	glLinkProgram (es->prog[EARTH]);
-	
-	/* Cleanup */
-	free (es->vertsource[EARTH]);
-	free (es->fragsource[EARTH]);
-	free (es->vertfile[EARTH]);
-	free (es->fragfile[EARTH]);
-    }
-    
-    /* Some cleanup */
-    free (es->datapath);
-    
-    /* Lighting and material settings */
+    /* Lights and materials settings */
     for (i=0; i<4; i++)
     {
 	es->light[SUN].ambient[i] = 0.2;
@@ -378,37 +320,14 @@ earthInitScreen (CompPlugin *p,
     es->light[EARTH].shininess = 50.0; 
     
     /* Display lists creation */
-    es->list[0] = glGenLists (4);
+    CreateLists (es);
+    
+    /* Join the texture images loading threads, bind the images to actual textures and free the images data */
     for (i=0; i<4; i++)
     {
-	GLdouble radius;
-	GLboolean inside;
-	
-	switch (i)
-	{
-	    case SUN:
-		radius = 0.1;
-		inside = TRUE;
-	    break;
-	    case EARTH:
-		radius = 0.75;
-		inside = FALSE;
-	    break;
-	    case CLOUDS:
-		radius = 0.76;
-		inside = FALSE;
-	    break;
-	    case SKY:
-		radius = 10;
-		inside = TRUE;
-	    break;
-	}
-	
-	es->list[i] = es->list[0] + i;
-	
-	glNewList (es->list[i], GL_COMPILE);
-	    makeSphere (radius, inside);
-	glEndList ();
+	pthread_join (es->texthreaddata[i].tid, NULL);
+	imageBufferToTexture (s, es->tex[i], es->imagedata[i].image, es->imagedata[i].width, es->imagedata[i].height);
+	free (es->imagedata[i].image);
     }
     
     /* BCOP */
@@ -444,16 +363,7 @@ earthFiniScreen (CompPlugin *p,
 	destroyTexture (s, es->tex[i]);
     
     /* Detach and free shaders */
-    if (es->shadersupport)
-    {
-	glDetachShader(es->prog[EARTH], es->vert[EARTH]);
-	glDetachShader(es->prog[EARTH], es->frag[EARTH]);
-	
-	glDeleteShader(es->vert[EARTH]);
-	glDeleteShader(es->frag[EARTH]);
-	
-	glDeleteProgram(es->prog[EARTH]);
-    }
+    DeleteShaders (es);
     
     
     UNWRAP (es, s, donePaintScreen);
@@ -675,4 +585,117 @@ char* LoadSource (char* filename)
     fclose (fp);
     
     return src;
+}
+
+void* LoadTexture_t (void* pdata)
+{
+    texthreaddata* data = (texthreaddata*) pdata;
+    CompScreen* s = data->s;
+    int num = data->num;
+    
+    EARTH_SCREEN (s);
+    char* texfile;
+    
+    switch (num)
+    {
+	case DAY:	asprintf (&texfile, "%s", "day.png");	    break;
+	case NIGHT:	asprintf (&texfile, "%s", "night.png");	    break;
+	case SKY:	asprintf (&texfile, "%s", "skydome.png");   break;
+	case CLOUDS:	asprintf (&texfile, "%s", "clouds.png");    break;
+    }
+    
+    es->tex[num] = createTexture (s);
+    readImageFromFile (s->display, texfile, &es->imagedata[num].width, &es->imagedata[num].height, &es->imagedata[num].image);
+    
+    return NULL;
+}
+
+void CreateShaders (EarthScreen* es)
+{
+    /* Shader support */
+    glewInit ();
+    if (glewIsSupported ("GL_VERSION_2_0"))
+	es->shadersupport = GL_TRUE;
+    
+    if (es->shadersupport)
+    {
+	/* Get Compiz data directory */
+	asprintf (&es->datapath, "%s%s",getenv("HOME"), "/.compiz/data/");
+	
+	/* Shader creation, loading and compiling */
+	es->vert[EARTH] = glCreateShader (GL_VERTEX_SHADER);
+	es->frag[EARTH] = glCreateShader (GL_FRAGMENT_SHADER);
+	
+	asprintf (&es->vertfile[EARTH], "%s%s", es->datapath, "earth.vert");
+	/* Load a different shader according to GLSL version */
+	if (glewIsSupported ("GL_VERSION_3_0"))
+	    asprintf (&es->fragfile[EARTH], "%s%s", es->datapath, "earth.frag");
+	else
+	    asprintf (&es->fragfile[EARTH], "%s%s", es->datapath, "earth110.frag");
+	
+	es->vertsource[EARTH] = LoadSource (es->vertfile[EARTH]);
+	es->fragsource[EARTH] = LoadSource (es->fragfile[EARTH]);
+	
+	glShaderSource (es->vert[EARTH], 1, (const GLchar**)&es->vertsource[EARTH], NULL);
+	glShaderSource (es->frag[EARTH], 1, (const GLchar**)&es->fragsource[EARTH], NULL);
+	
+	
+	glCompileShader (es->vert[EARTH]);
+	glCompileShader (es->frag[EARTH]);
+	
+	/* Program creation, attaching and linking */
+	es->prog[EARTH] = glCreateProgram ();
+	
+	glAttachShader (es->prog[EARTH], es->vert[EARTH]);
+	glAttachShader (es->prog[EARTH], es->frag[EARTH]);
+	
+	glLinkProgram (es->prog[EARTH]);
+	
+	/* Cleanup */
+	free (es->vertsource[EARTH]);
+	free (es->fragsource[EARTH]);
+	free (es->vertfile[EARTH]);
+	free (es->fragfile[EARTH]);
+	free (es->datapath);
+    }
+}
+
+void DeleteShaders (EarthScreen* es)
+{
+    if (es->shadersupport)
+    {
+	glDetachShader(es->prog[EARTH], es->vert[EARTH]);
+	glDetachShader(es->prog[EARTH], es->frag[EARTH]);
+	
+	glDeleteShader(es->vert[EARTH]);
+	glDeleteShader(es->frag[EARTH]);
+	
+	glDeleteProgram(es->prog[EARTH]);
+    }
+}
+
+void CreateLists (EarthScreen* es)
+{
+    int i;
+    es->list[0] = glGenLists (4);
+    
+    for (i=0; i<4; i++)
+    {
+	GLdouble radius;
+	GLboolean inside;
+	
+	switch (i)
+	{
+	    case SUN:	    radius = 0.1;	inside = TRUE;	break;
+	    case EARTH:	    radius = 0.75;	inside = FALSE;	break;
+	    case CLOUDS:    radius = 0.76;	inside = FALSE;	break;
+	    case SKY:	    radius = 10;	inside = TRUE;	break;
+	}
+	
+	es->list[i] = es->list[0] + i;
+	
+	glNewList (es->list[i], GL_COMPILE);
+	    makeSphere (radius, inside);
+	glEndList ();
+    }
 }

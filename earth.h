@@ -8,6 +8,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -46,6 +47,19 @@ typedef struct _LightParam
     GLfloat shininess;
 } LightParam;
 
+typedef struct _texthreaddata
+{
+    CompScreen* s;
+    int num;
+    pthread_t tid;
+} texthreaddata;
+
+typedef struct _imagedata
+{
+    void* image;
+    int width, height;
+} imagedata;
+
 typedef struct _EarthDisplay
 {
     int screenPrivateIndex;
@@ -76,8 +90,9 @@ typedef struct _EarthScreen
     /* Root path for data */
     char* datapath;
     
-    /* Textures */
-    char* texfile [4];
+    /* Textures and threads */
+    texthreaddata texthreaddata [4];
+    imagedata imagedata [4];
     CompTexture* tex [4];
     
     /* Rendering */
@@ -99,5 +114,9 @@ typedef struct _EarthScreen
 
 void makeSphere (GLdouble radius, GLboolean inside);
 char* LoadSource (char *filename);
+void* LoadTexture_t (void* pdata);
+void CreateShaders (EarthScreen* es);
+void DeleteShaders (EarthScreen* es);
+void CreateLists (EarthScreen* es);
 
 #endif
