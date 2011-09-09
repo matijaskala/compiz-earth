@@ -8,7 +8,9 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <pthread.h>
+#include <curl/curl.h>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -52,13 +54,27 @@ typedef struct _texthreaddata
     CompScreen* s;
     int num;
     pthread_t tid;
-} texthreaddata;
+} TexThreadData;
+
+typedef struct _cloudsthreaddata
+{
+    CompScreen* s;
+    pthread_t tid;
+    int started;
+    int finished;
+} CloudsThreadData;
 
 typedef struct _imagedata
 {
     void* image;
     int width, height;
-} imagedata;
+} ImageData;
+
+typedef struct _cloudsFile
+{
+    char* filename;
+    FILE* stream;
+} CloudsFile;
 
 typedef struct _EarthDisplay
 {
@@ -75,24 +91,25 @@ typedef struct _EarthScreen
 
     Bool damage;
     
-    /* Time */
-    time_t timer;
-    struct tm * temps;
-    
     /* Config parameters */
     float lon, lat;
     float tz;
     Bool  shaders;
+    Bool  clouds;
     
     /* Sun position */
     float dec, gha;
     
-    /* Root path for data */
-    char* datapath;
+    /* Threads */
+    TexThreadData texthreaddata [4];
+    CloudsThreadData cloudsthreaddata;
     
-    /* Textures and threads */
-    texthreaddata texthreaddata [4];
-    imagedata imagedata [4];
+    /* Clouds */
+    CURL* curlhandle;
+    CloudsFile cloudsfile;
+    
+    /* Textures */
+    ImageData imagedata [4];
     CompTexture* tex [4];
     
     /* Rendering */
@@ -114,9 +131,11 @@ typedef struct _EarthScreen
 
 void makeSphere (GLdouble radius, GLboolean inside);
 char* LoadSource (char *filename);
-void* LoadTexture_t (void* pdata);
+void* LoadTexture_t (void* threaddata);
 void CreateShaders (EarthScreen* es);
 void DeleteShaders (EarthScreen* es);
 void CreateLists (EarthScreen* es);
+static size_t writecloudsfile(void *buffer, size_t size, size_t nmemb, void *stream);
+void* DownloadClouds_t (void* threaddata);
 
 #endif

@@ -12,9 +12,10 @@ earthScreenOptionChanged (CompScreen		*s,
     EARTH_SCREEN (s);
     switch (num)
     {
-	case EarthScreenOptionLatitude:	    es->lat = earthGetLatitude (s);	break;
-	case EarthScreenOptionLongitude:    es->lon = earthGetLongitude (s);	break;
-	case EarthScreenOptionTimezone:	    es->tz  = earthGetTimezone (s);	break;
+	case EarthScreenOptionLatitude:	    es->lat	= earthGetLatitude (s);		break;
+	case EarthScreenOptionLongitude:    es->lon	= earthGetLongitude (s);	break;
+	case EarthScreenOptionTimezone:	    es->tz	= earthGetTimezone (s);		break;
+	case EarthScreenOptionClouds:	    es->clouds  = earthGetClouds (s);		break;
 	
 	case EarthScreenOptionShaders:
 	    es->shaders = earthGetShaders (s);
@@ -44,12 +45,32 @@ earthPreparePaintScreen (CompScreen *s,
 {
     EARTH_SCREEN (s);
     
+    time_t timer = time (NULL);
+    struct tm* currenttime = localtime (&timer);
+    
+    struct stat attrib;
+    
     /* Earth and Sun positions calculations */
-    es->timer = time (NULL);
-    es->temps = localtime (&es->timer);
-    es->dec = 23.45f * cos((6.2831f/365.0f)*((float)es->temps->tm_yday+10.0f));
-    es->gha = (float)es->temps->tm_hour-(es->tz + (float)es->temps->tm_isdst) + (float)es->temps->tm_min/60.00f;
-
+    es->dec = 23.4400f * cos((6.2831f/365.0000f)*((float)currenttime->tm_yday+10.0000f));
+    es->gha = (float)currenttime->tm_hour-(es->tz + (float)currenttime->tm_isdst) + (float)currenttime->tm_min/60.0000f;
+    
+    /* Realtime cloudmap */
+    stat (es->cloudsfile.filename, &attrib);
+    if ((difftime (timer, attrib.st_mtime) > (3600 * 3)) && (es->cloudsthreaddata.started == 0) && (es->clouds))
+    {
+	es->cloudsthreaddata.s = s;
+	pthread_create (&es->cloudsthreaddata.tid, NULL, DownloadClouds_t, (void*) &es->cloudsthreaddata);
+    }
+    
+    if (es->cloudsthreaddata.finished == 1)
+    {
+	pthread_join (es->cloudsthreaddata.tid, NULL);
+	readImageToTexture (s, es->tex[CLOUDS], "clouds.png", 0, 0);
+	es->cloudsthreaddata.finished = 0;
+	es->cloudsthreaddata.started = 0;
+    }
+    
+    
     UNWRAP (es, s, preparePaintScreen);
     (*s->preparePaintScreen) (s, ms);
     WRAP (es, s, preparePaintScreen, earthPreparePaintScreen);
@@ -298,6 +319,21 @@ earthInitScreen (CompPlugin *p,
 	pthread_create (&es->texthreaddata[i].tid, NULL, LoadTexture_t, (void*) &es->texthreaddata[i]);
     }
     
+    /* cloudsfile initialization */
+    asprintf (&es->cloudsfile.filename, "%s%s", getenv("HOME"), "/.compiz/images/clouds.jpg");
+    es->cloudsfile.stream = NULL;
+    
+    /* cURL initialization */
+    curl_global_init (CURL_GLOBAL_DEFAULT);
+    es->curlhandle = curl_easy_init();
+    
+    if (es->curlhandle)
+    {
+	curl_easy_setopt (es->curlhandle, CURLOPT_URL, "http://home.megapass.co.kr/~holywatr/cloud_data/clouds_2048.jpg");
+	curl_easy_setopt (es->curlhandle, CURLOPT_WRITEFUNCTION, writecloudsfile);
+        curl_easy_setopt (es->curlhandle, CURLOPT_WRITEDATA, &es->cloudsfile);
+    }
+    
     /* Load the shaders */
     CreateShaders(es);
     
@@ -335,6 +371,7 @@ earthInitScreen (CompPlugin *p,
     earthSetLongitudeNotify (s, earthScreenOptionChanged);
     earthSetTimezoneNotify (s, earthScreenOptionChanged);
     earthSetShadersNotify (s, earthScreenOptionChanged);
+    earthSetCloudsNotify (s, earthScreenOptionChanged);
     
     earthScreenOptionChanged (s, earthGetShadersOption (s),EarthScreenOptionShaders);
     
@@ -365,6 +402,10 @@ earthFiniScreen (CompPlugin *p,
     /* Detach and free shaders */
     DeleteShaders (es);
     
+    /* cURL cleanup */
+    if (es->curlhandle)
+	curl_easy_cleanup (es->curlhandle);
+    curl_global_cleanup ();
     
     UNWRAP (es, s, donePaintScreen);
     UNWRAP (es, s, preparePaintScreen);
@@ -587,9 +628,9 @@ char* LoadSource (char* filename)
     return src;
 }
 
-void* LoadTexture_t (void* pdata)
+void* LoadTexture_t (void* threaddata)
 {
-    texthreaddata* data = (texthreaddata*) pdata;
+    TexThreadData* data = (TexThreadData*) threaddata;
     CompScreen* s = data->s;
     int num = data->num;
     
@@ -610,8 +651,63 @@ void* LoadTexture_t (void* pdata)
     return NULL;
 }
 
+void* DownloadClouds_t (void* threaddata)
+{
+    CloudsThreadData* data = (CloudsThreadData*) threaddata;
+    EARTH_SCREEN (data->s);
+    
+    char* imagefile;
+    ImageData imagedata;
+    char* p_imagedata;
+    int h, w;
+    
+    data->started = 1;
+    data->finished = 0;
+    
+    /* cloudsfile initialization */
+    es->cloudsfile.stream = NULL;
+    
+    /* Download the jpg file */
+    if (es->curlhandle)
+	curl_easy_perform (es->curlhandle);
+    
+    if (es->cloudsfile.stream)
+	fclose(es->cloudsfile.stream);
+	
+    /* Load the jpgfile from disk */
+    asprintf (&imagefile, "%s", "clouds.jpg");
+    readImageFromFile (data->s->display, imagefile, &imagedata.width, &imagedata.height, &imagedata.image);
+    
+    p_imagedata = (char*) imagedata.image;
+    /* Adjust alpha channel */
+    for (h = 0; h < imagedata.height; h++)
+    {
+        for (w = 0; w < imagedata.width; w++)
+        {
+    	int pos = h * imagedata.width + w;
+    	#if __BYTE_ORDER == __BIG_ENDIAN
+    	p_imagedata[(pos * 4) + 0] = p_imagedata[(pos * 4) + 1];
+    	#else
+    	p_imagedata[(pos * 4) + 3] = p_imagedata[(pos * 4) + 1];
+    	#endif
+        }
+    }
+    
+    /* Write in the pngfile */
+    asprintf (&imagefile, "%s%s", getenv ("HOME"), "/.compiz/images/clouds.png");
+    writeImageToFile (data->s->display, "", imagefile, "png", imagedata.width, imagedata.height, imagedata.image);
+    
+    /* Clean */
+    free (imagedata.image);
+    free (imagefile);
+    
+    data->finished = 1;
+    return NULL;
+}
+
 void CreateShaders (EarthScreen* es)
 {
+    char* datapath;
     /* Shader support */
     glewInit ();
     if (glewIsSupported ("GL_VERSION_2_0"))
@@ -620,19 +716,15 @@ void CreateShaders (EarthScreen* es)
     if (es->shadersupport)
     {
 	/* Get Compiz data directory */
-	asprintf (&es->datapath, "%s%s",getenv("HOME"), "/.compiz/data/");
+	asprintf (&datapath, "%s%s",getenv ("HOME"), "/.compiz/data/");
 	
 	/* Shader creation, loading and compiling */
 	es->vert[EARTH] = glCreateShader (GL_VERTEX_SHADER);
 	es->frag[EARTH] = glCreateShader (GL_FRAGMENT_SHADER);
 	
-	asprintf (&es->vertfile[EARTH], "%s%s", es->datapath, "earth.vert");
-	/* Load a different shader according to GLSL version */
-	if (glewIsSupported ("GL_VERSION_3_0"))
-	    asprintf (&es->fragfile[EARTH], "%s%s", es->datapath, "earth.frag");
-	else
-	    asprintf (&es->fragfile[EARTH], "%s%s", es->datapath, "earth110.frag");
-	
+	asprintf (&es->vertfile[EARTH], "%s%s", datapath, "earth.vert");
+	asprintf (&es->fragfile[EARTH], "%s%s", datapath, "earth.frag");
+		
 	es->vertsource[EARTH] = LoadSource (es->vertfile[EARTH]);
 	es->fragsource[EARTH] = LoadSource (es->fragfile[EARTH]);
 	
@@ -656,7 +748,7 @@ void CreateShaders (EarthScreen* es)
 	free (es->fragsource[EARTH]);
 	free (es->vertfile[EARTH]);
 	free (es->fragfile[EARTH]);
-	free (es->datapath);
+	free (datapath);
     }
 }
 
@@ -698,4 +790,18 @@ void CreateLists (EarthScreen* es)
 	    makeSphere (radius, inside);
 	glEndList ();
     }
+}
+
+static size_t writecloudsfile(void *buffer, size_t size, size_t nmemb, void *stream)
+{
+    CloudsFile* out = (CloudsFile*) stream;
+    if (out && !out->stream)
+    {
+	/* open file for writing */ 
+	out->stream = fopen (out->filename, "wb");
+	
+	if(!out->stream)
+	    return -1; /* failure, can't open file to write */ 
+  }
+  return fwrite(buffer, size, nmemb, out->stream);
 }

@@ -43,6 +43,11 @@
 				<_long>Make use of the shaders if possible</_long>
 				<default>true</default>
 			</option>
+			<option name="clouds" type="bool">
+				<_short>Realtime cloudmap</_short>
+				<_long>Download a cloudmap every 3 hour</_long>
+				<default>false</default>
+			</option>
 		</screen>
 	</plugin>
 </compiz>

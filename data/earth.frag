@@ -17,7 +17,8 @@ void main()
     
     normal_ = normalize (normal);
     
-    NdotL = max (dot (normal_, lightDir), 0.0);
+    /* Tweak NdotL a bit to make a brighter day, and roughly simulate atmosphere scattening extending the day beyond the strict line */
+    NdotL = clamp (dot (normal_, lightDir)*2 + 0.2, 0.0, 1.0);
     
     vec4 color;
     
@@ -25,7 +26,7 @@ void main()
     color = (ambient + NdotL*diffuse) * daytexel;
     
     /* Display the night lights on top of the night side, with a little gradient.*/
-    float coeff = smoothstep (0.9, 1, 1 - NdotL);
+    float coeff = clamp((1-NdotL-0.8)*5 ,0,1);
     
     color += nighttexel * coeff;
     
