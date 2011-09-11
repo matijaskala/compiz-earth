@@ -8,6 +8,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <pthread.h>
 #include <curl/curl.h>
@@ -137,5 +138,6 @@ void DeleteShaders (EarthScreen* es);
 void CreateLists (EarthScreen* es);
 static size_t writecloudsfile(void *buffer, size_t size, size_t nmemb, void *stream);
 void* DownloadClouds_t (void* threaddata);
+void TransformClouds (CompScreen* s);
 
 #endif

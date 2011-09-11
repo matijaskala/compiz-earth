@@ -49,14 +49,15 @@ earthPreparePaintScreen (CompScreen *s,
     struct tm* currenttime = localtime (&timer);
     
     struct stat attrib;
+    int res;
     
     /* Earth and Sun positions calculations */
     es->dec = 23.4400f * cos((6.2831f/365.0000f)*((float)currenttime->tm_yday+10.0000f));
     es->gha = (float)currenttime->tm_hour-(es->tz + (float)currenttime->tm_isdst) + (float)currenttime->tm_min/60.0000f;
     
     /* Realtime cloudmap */
-    stat (es->cloudsfile.filename, &attrib);
-    if ((difftime (timer, attrib.st_mtime) > (3600 * 3)) && (es->cloudsthreaddata.started == 0) && (es->clouds))
+    res = stat (es->cloudsfile.filename, &attrib);
+    if ( ((difftime (timer, attrib.st_mtime) > (3600 * 3)) || (res != 0)) && (es->cloudsthreaddata.started == 0) && (es->clouds) )
     {
 	es->cloudsthreaddata.s = s;
 	pthread_create (&es->cloudsthreaddata.tid, NULL, DownloadClouds_t, (void*) &es->cloudsthreaddata);
@@ -65,6 +66,7 @@ earthPreparePaintScreen (CompScreen *s,
     if (es->cloudsthreaddata.finished == 1)
     {
 	pthread_join (es->cloudsthreaddata.tid, NULL);
+	TransformClouds (s);
 	readImageToTexture (s, es->tex[CLOUDS], "clouds.png", 0, 0);
 	es->cloudsthreaddata.finished = 0;
 	es->cloudsthreaddata.started = 0;
@@ -322,6 +324,8 @@ earthInitScreen (CompPlugin *p,
     /* cloudsfile initialization */
     asprintf (&es->cloudsfile.filename, "%s%s", getenv("HOME"), "/.compiz/images/clouds.jpg");
     es->cloudsfile.stream = NULL;
+    es->cloudsthreaddata.started = 0;
+    es->cloudsthreaddata.finished = 0;
     
     /* cURL initialization */
     curl_global_init (CURL_GLOBAL_DEFAULT);
@@ -656,11 +660,6 @@ void* DownloadClouds_t (void* threaddata)
     CloudsThreadData* data = (CloudsThreadData*) threaddata;
     EARTH_SCREEN (data->s);
     
-    char* imagefile;
-    ImageData imagedata;
-    char* p_imagedata;
-    int h, w;
-    
     data->started = 1;
     data->finished = 0;
     
@@ -674,32 +673,7 @@ void* DownloadClouds_t (void* threaddata)
     if (es->cloudsfile.stream)
 	fclose(es->cloudsfile.stream);
 	
-    /* Load the jpgfile from disk */
-    asprintf (&imagefile, "%s", "clouds.jpg");
-    readImageFromFile (data->s->display, imagefile, &imagedata.width, &imagedata.height, &imagedata.image);
     
-    p_imagedata = (char*) imagedata.image;
-    /* Adjust alpha channel */
-    for (h = 0; h < imagedata.height; h++)
-    {
-        for (w = 0; w < imagedata.width; w++)
-        {
-    	int pos = h * imagedata.width + w;
-    	#if __BYTE_ORDER == __BIG_ENDIAN
-    	p_imagedata[(pos * 4) + 0] = p_imagedata[(pos * 4) + 1];
-    	#else
-    	p_imagedata[(pos * 4) + 3] = p_imagedata[(pos * 4) + 1];
-    	#endif
-        }
-    }
-    
-    /* Write in the pngfile */
-    asprintf (&imagefile, "%s%s", getenv ("HOME"), "/.compiz/images/clouds.png");
-    writeImageToFile (data->s->display, "", imagefile, "png", imagedata.width, imagedata.height, imagedata.image);
-    
-    /* Clean */
-    free (imagedata.image);
-    free (imagefile);
     
     data->finished = 1;
     return NULL;
@@ -804,4 +778,54 @@ static size_t writecloudsfile(void *buffer, size_t size, size_t nmemb, void *str
 	    return -1; /* failure, can't open file to write */ 
   }
   return fwrite(buffer, size, nmemb, out->stream);
+}
+
+void TransformClouds (CompScreen* s)
+{
+    char* imagefile;
+    void* jpgdata;
+    void* pngdata;
+    char* p_jpgdata;
+    char* p_pngdata;
+    int width, height;
+    int h, w;
+    
+    
+    /* Load the jpgfile from disk */
+    asprintf (&imagefile, "%s", "clouds.jpg");
+    readImageFromFile (s->display, imagefile, &width, &height, &jpgdata);
+    
+    p_jpgdata = (char*) jpgdata;
+    /* Adjust alpha channel */
+    for (h=0; h<height; h++)
+    {
+        for (w=0; w<width; w++)
+        {
+	    int pos = h * width + w;
+	    #if __BYTE_ORDER == __BIG_ENDIAN
+	    p_jpgdata[(pos * 4) + 0] = p_jpgdata[(pos * 4) + 1];
+	    #else
+	    p_jpgdata[(pos * 4) + 3] = p_jpgdata[(pos * 4) + 1];
+	    #endif
+        }
+    }
+    
+    /* Flip image vertically */
+    p_pngdata = malloc (width * height * 4);
+    
+    for (h=0; h<height; h++)
+    {
+	memcpy (&p_pngdata[h * width * 4], &p_jpgdata[(height - h) * width * 4], width * 4);
+    }
+    
+    free (jpgdata);
+    pngdata = (void*) p_pngdata;
+    
+    /* Write in the pngfile */
+    asprintf (&imagefile, "%s%s", getenv ("HOME"), "/.compiz/images/clouds.png");
+    writeImageToFile (s->display, "", imagefile, "png", width, height, pngdata);
+    
+    /* Clean */
+    free (pngdata);
+    free (imagefile);
 }
