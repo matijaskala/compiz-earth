@@ -115,7 +115,7 @@ earthPaintInside (CompScreen              *s,
     glEnable (GL_BLEND);
     glDisable (GL_COLOR_MATERIAL);
     
-    float ratio = (float)s->height / (float)s->width;
+    float ratio = (float)output->height / (float)output->width;
     glScalef (ratio, 1.0f, ratio);
     
     /* Earth position according to longitude and latitude */
