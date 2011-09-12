@@ -98,6 +98,8 @@ typedef struct _EarthScreen
     Bool  shaders;
     Bool  clouds;
     
+    int previousoutput;
+    
     /* Sun position */
     float dec, gha;
     

@@ -115,8 +115,12 @@ earthPaintInside (CompScreen              *s,
     glEnable (GL_BLEND);
     glDisable (GL_COLOR_MATERIAL);
     
+    
     float ratio = (float)output->height / (float)output->width;
+    if (cs->moMode == CUBE_MOMODE_AUTO)
+	ratio = (float)s->height / (float)s->width;
     glScalef (ratio, 1.0f, ratio);
+    es->previousoutput = output->id;
     
     /* Earth position according to longitude and latitude */
     glRotatef (es->lat-90, 1, 0, 0);
@@ -214,7 +218,13 @@ earthClearTargetOutput (CompScreen *s,
     
     glPushMatrix();
     
-    float ratio = (float)s->height / (float)s->width;
+    CompOutput* currentoutput = &s->outputDev[(es->previousoutput + 1) % (s->nOutputDev)];
+    
+    float ratio = (float)currentoutput->height / (float)currentoutput->width;
+    
+    if (cs->moMode == CUBE_MOMODE_ONE)
+	ratio = (float) s->height / (float) s->width;
+    
     glScalef (ratio, 1.0f, ratio);
     
     /* Rotate the skydome according to the mouse and the rotation of the Earth */
