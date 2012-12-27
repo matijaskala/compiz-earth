@@ -6,14 +6,17 @@
 		<category>Effects</category>
 		<deps>
 			<relation type="after">
+				<plugin>opengl</plugin>
 				<plugin>cube</plugin>
-				<plugin>cubeaddon</plugin>
+				<plugin>decor</plugin>
 			</relation>
 			<requirement>
+				<plugin>composite</plugin>
+				<plugin>opengl</plugin>
 				<plugin>cube</plugin>
 			</requirement>
 		</deps>
-		<screen>
+		<options>
 			<option name="latitude" type="float">
 				<_short>Latitude</_short>
 				<_long>Enter a positive value for a North latitude, negative for a South one</_long>
@@ -48,6 +51,27 @@
 				<_long>Download a cloudmap every 3 hour</_long>
 				<default>false</default>
 			</option>
-		</screen>
+			<option name="cloud_update_time" type="float">
+				<_short>Update time</_short>
+				<_long>Time in hours</_long>
+				<min>0.1</min>
+				<max>48</max>
+				<default>3</default>
+				<precision>0.1</precision>
+			</option>
+			<option name="south" type="bool">
+				<_short>South on top</_short>
+				<_long>Draw south pole on top instead of north</_long>
+				<default>false</default>
+			</option>
+			<option name="earth_size" type="float">
+				<_short>Earth size</_short>
+				<_long>Size of earth</_long>
+				<min>0.1</min>
+				<max>1</max>
+				<default>0.7</default>
+				<precision>0.01</precision>
+			</option>
+		</options>
 	</plugin>
 </compiz>

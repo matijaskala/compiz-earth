@@ -1,3 +1,5 @@
-include (CompizFusion)
+find_package (Compiz REQUIRED)
 
-compiz_fusion_plugin (earth PLUGINDEPS cube LIBRARIES GLEW pthread curl)
+include (CompizPlugin)
+
+compiz_plugin (earth PLUGINDEPS composite opengl cube LIBRARIES GLEW curl)
