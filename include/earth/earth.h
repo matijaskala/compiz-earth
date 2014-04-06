@@ -80,7 +80,7 @@ public:
 	//bool setOption (const CompString &name, CompOption::Value &value);
 	//void cubeGetRotation (float &x, float &v, float &progress);
 	void cubeClearTargetOutput (float, float);
-	void cubePaintInside (const GLScreenPaintAttrib&, const GLMatrix&, CompOutput*, int);
+	void cubePaintInside (const GLScreenPaintAttrib&, const GLMatrix&, CompOutput*, int, const GLVector&);
 	void createShaders ();
 	void deleteShaders ();
 	void createLists ();
@@ -108,7 +108,12 @@ struct _TexThreadData{    CompScreen* s;    int num;    pthread_t tid; EarthScre
 
 struct CloudsThreadData{    CompScreen* s;    pthread_t tid;    int started;    int finished; EarthScreen* base;};
 
-struct CloudsFile{    char* filename;    FILE* stream; EarthScreen* base;};
+struct CloudsFile
+{
+    CompString filename;
+    FILE* stream;
+    EarthScreen* base;
+};
     
     /* Clouds */
     CURL* curlhandle;
@@ -148,7 +153,7 @@ struct EarthPluginVTable : public CompPlugin::VTableForScreen<EarthScreen>
 	bool init ();
 };
 
-CompString LoadSource (CompString filename);
+CompString LoadSource (const char* filename);
 
 static size_t writecloudsfile(void *buffer, size_t size, size_t nmemb, void *stream);
 void TransformClouds (CompScreen* s);

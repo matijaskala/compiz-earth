@@ -25,6 +25,7 @@
  */
 
 #include <earth/earth.h>
+#include <glibmm/miscutils.h>
 
 COMPIZ_PLUGIN_20090315 (earth, EarthPluginVTable)
 
@@ -34,24 +35,24 @@ void EarthScreen::optionChange (CompOption *option, Options num)
 {
     switch (num)
     {
-		case EarthOptions::Shaders:
-			if (option->value().b())
-			{
-				Light[EARTH].specular[0] = 0.5;
-				Light[EARTH].specular[1] = 0.5;
-				Light[EARTH].specular[2] = 0.4;
-				Light[EARTH].specular[3] = 1;
-			}
-			else
-			{
-				Light[EARTH].specular[0] = 0;
-				Light[EARTH].specular[1] = 0;
-				Light[EARTH].specular[2] = 0;
-				Light[EARTH].specular[3] = 0;
-			}
-			break;
-		default:
-			break;
+	case EarthOptions::Shaders:
+		if (option->value().b())
+		{
+			Light[EARTH].specular[0] = 0.5;
+			Light[EARTH].specular[1] = 0.5;
+			Light[EARTH].specular[2] = 0.4;
+			Light[EARTH].specular[3] = 1;
+		}
+		else
+		{
+			Light[EARTH].specular[0] = 0;
+			Light[EARTH].specular[1] = 0;
+			Light[EARTH].specular[2] = 0;
+			Light[EARTH].specular[3] = 0;
+		}
+		break;
+	default:
+		break;
     }
     updateTime = optionGetCloudUpdateTime();
 }
@@ -69,7 +70,7 @@ void EarthScreen::preparePaint (int ms)
     gha = (float)currenttime->tm_hour-(optionGetTimezone() + (float)currenttime->tm_isdst) + (float)currenttime->tm_min/60.0000f;
     
     /* Realtime cloudmap */
-    res = stat (cloudsfile.filename, &attrib);
+    res = stat (cloudsfile.filename.c_str(), &attrib);
     if (((difftime (timer, attrib.st_mtime) > (3600 * updateTime)) || (res != 0)) && (cloudsthreaddata.started == 0) && optionGetClouds())
     {
 	cloudsthreaddata.s = screen;
@@ -91,11 +92,11 @@ void EarthScreen::preparePaint (int ms)
     cScreen->preparePaint (ms);
 }
 
-void EarthScreen::cubePaintInside (const GLScreenPaintAttrib &sAttrib, const GLMatrix &transform, CompOutput *output, int size)
+void EarthScreen::cubePaintInside (const GLScreenPaintAttrib &sAttrib, const GLMatrix &transform, CompOutput *output, int size, const GLVector& vector)
 {
     if(cubeScreen->getOption("in")->value().b())
 	{
-		cubeScreen->cubePaintInside (sAttrib, transform, output, size);
+		cubeScreen->cubePaintInside (sAttrib, transform, output, size, vector);
 		return;
 	}
     GLScreenPaintAttrib sA=sAttrib;
@@ -203,7 +204,7 @@ void EarthScreen::cubePaintInside (const GLScreenPaintAttrib &sAttrib, const GLM
     
     damage = TRUE;
 
-    cubeScreen->cubePaintInside (sAttrib, transform, output, size);
+    cubeScreen->cubePaintInside (sAttrib, transform, output, size, vector);
 }
 
 void EarthScreen::cubeClearTargetOutput (float xRotate, float vRotate)
@@ -304,7 +305,7 @@ EarthScreen::EarthScreen (CompScreen *s) :
     }
     
     /* cloudsfile initialization */
-    asprintf (&cloudsfile.filename, "%s%s", getenv("HOME"), "/.compiz-1/earth/images/clouds.jpg");
+    cloudsfile.filename = Glib::getenv("HOME") + "/.compiz-1/earth/images/clouds.jpg";
     cloudsfile.stream = NULL;
     cloudsthreaddata.started = 0;
     cloudsthreaddata.finished = 0;
@@ -482,13 +483,13 @@ void EarthScreen::makeSphere (GLdouble radius, GLboolean inside)
     }
 }
 
-CompString LoadSource (CompString filename)
+CompString LoadSource (const char* filename)
 {
     CompString src;   /* shader source code */
-    std::ifstream fi(filename.c_str());    /* file */
+    std::ifstream fi(filename);    /* file */
     if (!fi.is_open())
     {
-        std::cerr << "unable to load '%s'\n" << filename;
+	compLogMessage("earth",CompLogLevelError,"unable to load '%s'", filename);
         return NULL;
     }
     while(fi)
@@ -507,7 +508,7 @@ void* loadTexture (void* p)
     
     switch (num)
     {
-		   case DAY:	texfile+="day.png";	    break;
+		   case DAY:	texfile+="day.png";	break;
 		   case NIGHT:	texfile+="night.png";	break;
 		   case SKY:	texfile+="skydome.png";	break;
 		   case CLOUDS:	texfile+="clouds.png";	break;
@@ -551,13 +552,11 @@ void EarthScreen::createShaders ()
 	vert[EARTH] = glCreateShader (GL_VERTEX_SHADER);
 	frag[EARTH] = glCreateShader (GL_FRAGMENT_SHADER);
 	
-	vertfile[EARTH]+=getenv("HOME");
-	vertfile[EARTH]+="/.compiz-1/earth/data/earth.vert";
-	fragfile[EARTH]+=getenv("HOME");
-	fragfile[EARTH]+="/.compiz-1/earth/data/earth.frag";
+	vertfile[EARTH] += Glib::getenv("HOME") + "/.compiz-1/earth/data/earth.vert";
+	fragfile[EARTH] += Glib::getenv("HOME") + "/.compiz-1/earth/data/earth.frag";
 		
-	vertsource[EARTH] = LoadSource (vertfile[EARTH]);
-	fragsource[EARTH] = LoadSource (fragfile[EARTH]);
+	vertsource[EARTH] = LoadSource (vertfile[EARTH].c_str());
+	fragsource[EARTH] = LoadSource (fragfile[EARTH].c_str());
 
 	const char*c=vertsource[EARTH].c_str();
 	glShaderSource (vert[EARTH], 1, &c, NULL);
@@ -624,7 +623,7 @@ static size_t writecloudsfile(void *buffer, size_t size, size_t nmemb, void *str
     if (out && !out->stream)
     {
 	/* open file for writing */ 
-	out->stream = fopen (out->filename, "wb");
+	out->stream = fopen (out->filename.c_str(), "wb");
 	
 	if(!out->stream)
 	    return -1; /* failure, can't open file to write */ 
