@@ -48,6 +48,14 @@
 				<_long>Download a cloudmap every 3 hour</_long>
 				<default>false</default>
 			</option>
+			<option name="earth_size" type="float">
+				<_short>Earth size</_short>
+				<_long>Size of earth</_long>
+				<min>0.1</min>
+				<max>1</max>
+				<default>0.7</default>
+				<precision>0.01</precision>
+			</option>
 		</screen>
 	</plugin>
 </compiz>

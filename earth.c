@@ -16,6 +16,7 @@ earthScreenOptionChanged (CompScreen		*s,
 	case EarthScreenOptionLongitude:    es->lon	= earthGetLongitude (s);	break;
 	case EarthScreenOptionTimezone:	    es->tz	= earthGetTimezone (s);		break;
 	case EarthScreenOptionClouds:	    es->clouds  = earthGetClouds (s);		break;
+	case EarthScreenOptionEarthSize:    es->earth_size = earthGetEarthSize (s);	break;
 	
 	case EarthScreenOptionShaders:
 	    es->shaders = earthGetShaders (s);
@@ -119,7 +120,7 @@ earthPaintInside (CompScreen              *s,
     float ratio = (float)output->height / (float)output->width;
     if (cs->moMode == CUBE_MOMODE_AUTO)
 	ratio = (float)s->height / (float)s->width;
-    glScalef (ratio, 1.0f, ratio);
+    glScalef (ratio * es->earth_size, es->earth_size, ratio * es->earth_size);
     es->previousoutput = output->id;
     
     /* Earth position according to longitude and latitude */
@@ -396,6 +397,7 @@ earthInitScreen (CompPlugin *p,
     earthSetTimezoneNotify (s, earthScreenOptionChanged);
     earthSetShadersNotify (s, earthScreenOptionChanged);
     earthSetCloudsNotify (s, earthScreenOptionChanged);
+    earthSetEarthSizeNotify (s, earthScreenOptionChanged);
     
     earthScreenOptionChanged (s, earthGetShadersOption (s),EarthScreenOptionShaders);
     
