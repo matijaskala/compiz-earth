@@ -309,6 +309,8 @@ earthInitScreen (CompPlugin *p,
 		CompScreen *s)
 {
     EarthScreen *es;
+    char* imagedir;
+    struct stat st;
 
     EARTH_DISPLAY (s->display);
     CUBE_SCREEN (s);
@@ -330,6 +332,14 @@ earthInitScreen (CompPlugin *p,
 	es->texthreaddata[i].num = i;
 	pthread_create (&es->texthreaddata[i].tid, NULL, LoadTexture_t, (void*) &es->texthreaddata[i]);
     }
+
+    asprintf (&imagedir, "%s%s", getenv("HOME"), "/.compiz/images");
+    if ((stat (imagedir, &st) < 0 && (mkdir (imagedir) < 0 || stat (imagedir, &st) < 0)) || !S_ISDIR (st.st_mode))
+    {
+        free (imagedir);
+        return FALSE;
+    }
+    free (imagedir);
     
     /* cloudsfile initialization */
     asprintf (&es->cloudsfile.filename, "%s%s", getenv("HOME"), "/.compiz/images/clouds.jpg");
