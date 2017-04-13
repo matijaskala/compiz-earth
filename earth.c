@@ -391,6 +391,8 @@ earthInitScreen (CompPlugin *p,
 	free (es->imagedata[i].image);
     }
     
+    es->earth_size = 0.7f;
+    
     /* BCOP */
     earthSetLatitudeNotify (s, earthScreenOptionChanged);
     earthSetLongitudeNotify (s, earthScreenOptionChanged);
