@@ -391,8 +391,6 @@ earthInitScreen (CompPlugin *p,
 	free (es->imagedata[i].image);
     }
     
-    es->earth_size = 0.7f;
-    
     /* BCOP */
     earthSetLatitudeNotify (s, earthScreenOptionChanged);
     earthSetLongitudeNotify (s, earthScreenOptionChanged);
@@ -401,7 +399,8 @@ earthInitScreen (CompPlugin *p,
     earthSetCloudsNotify (s, earthScreenOptionChanged);
     earthSetEarthSizeNotify (s, earthScreenOptionChanged);
     
-    earthScreenOptionChanged (s, earthGetShadersOption (s),EarthScreenOptionShaders);
+    earthScreenOptionChanged (s, earthGetShadersOption (s), EarthScreenOptionShaders);
+    earthScreenOptionChanged (s, earthGetEarthSizeOption (s), EarthScreenOptionEarthSize);
     
     WRAP (es, s, donePaintScreen, earthDonePaintScreen);
     WRAP (es, s, preparePaintScreen, earthPreparePaintScreen);
