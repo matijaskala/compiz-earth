@@ -386,9 +386,12 @@ earthInitScreen (CompPlugin *p,
     /* Join the texture images loading threads, bind the images to actual textures and free the images data */
     for (i=0; i<4; i++)
     {
-	pthread_join (es->texthreaddata[i].tid, NULL);
-	imageBufferToTexture (s, es->tex[i], es->imagedata[i].image, es->imagedata[i].width, es->imagedata[i].height);
-	free (es->imagedata[i].image);
+        pthread_join (es->texthreaddata[i].tid, NULL);
+        if (es->imagedata[i].image)
+        {
+            imageBufferToTexture (s, es->tex[i], es->imagedata[i].image, es->imagedata[i].width, es->imagedata[i].height);
+            free (es->imagedata[i].image);
+        }
     }
     
     /* BCOP */
@@ -673,7 +676,8 @@ void* LoadTexture_t (void* threaddata)
     }
     
     es->tex[num] = createTexture (s);
-    readImageFromFile (s->display, texfile, &es->imagedata[num].width, &es->imagedata[num].height, &es->imagedata[num].image);
+    if (!readImageFromFile (s->display, texfile, &es->imagedata[num].width, &es->imagedata[num].height, &es->imagedata[num].image))
+        es->imagedata[num].image = NULL;
     
     return NULL;
 }
