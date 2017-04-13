@@ -335,7 +335,7 @@ earthInitScreen (CompPlugin *p,
     }
 
     asprintf (&imagedir, "%s%s", getenv("HOME"), "/.compiz/images");
-    if ((stat (imagedir, &st) < 0 && (mkdir (imagedir) < 0 || stat (imagedir, &st) < 0)) || !S_ISDIR (st.st_mode))
+    if ((stat (imagedir, &st) < 0 && (mkdir (imagedir, 0755) < 0 || stat (imagedir, &st) < 0)) || !S_ISDIR (st.st_mode))
     {
         free (imagedir);
         return FALSE;
