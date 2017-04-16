@@ -354,7 +354,7 @@ earthInitScreen (CompPlugin *p,
     
     if (es->curlhandle)
     {
-	curl_easy_setopt (es->curlhandle, CURLOPT_URL, "http://home.megapass.co.kr/~holywatr/cloud_data/clouds_2048.jpg");
+	curl_easy_setopt (es->curlhandle, CURLOPT_URL, earthGetCloudsUrl (s));
 	curl_easy_setopt (es->curlhandle, CURLOPT_WRITEFUNCTION, writecloudsfile);
         curl_easy_setopt (es->curlhandle, CURLOPT_WRITEDATA, &es->cloudsfile);
     }
