@@ -97,6 +97,7 @@ typedef struct _EarthScreen
     float tz;
     Bool  shaders;
     Bool  clouds;
+    Bool south_on_top;
     float earth_size;
     
     int previousoutput;
