@@ -16,6 +16,7 @@ earthScreenOptionChanged (CompScreen		*s,
 	case EarthScreenOptionLongitude:    es->lon	= earthGetLongitude (s);	break;
 	case EarthScreenOptionTimezone:	    es->tz	= earthGetTimezone (s);		break;
 	case EarthScreenOptionClouds:	    es->clouds  = earthGetClouds (s);		break;
+	case EarthScreenOptionSouthOnTop:   es->south_on_top = earthGetSouthOnTop (s);	break;
 	case EarthScreenOptionEarthSize:    es->earth_size = earthGetEarthSize (s);	break;
 	
 	case EarthScreenOptionShaders:
@@ -124,8 +125,10 @@ earthPaintInside (CompScreen              *s,
     es->previousoutput = output->id;
     
     /* Earth position according to longitude and latitude */
-    glRotatef (es->lat-90, 1, 0, 0);
-    glRotatef (es->lon, 0, 0, 1);
+    glRotatef ((es->south_on_top?-1:1)*es->lat-90, 1, 0, 0);
+    glRotatef ((es->south_on_top?-1:1)*es->lon, 0, 0, 1);
+    if (es->south_on_top)
+	glRotatef (180, 0, 1, 0);
     
     glPushMatrix ();
     
@@ -399,6 +402,7 @@ earthInitScreen (CompPlugin *p,
     earthSetTimezoneNotify (s, earthScreenOptionChanged);
     earthSetShadersNotify (s, earthScreenOptionChanged);
     earthSetCloudsNotify (s, earthScreenOptionChanged);
+    earthSetSouthOnTopNotify (s, earthScreenOptionChanged);
     earthSetEarthSizeNotify (s, earthScreenOptionChanged);
     
     earthScreenOptionChanged (s, earthGetShadersOption (s), EarthScreenOptionShaders);
