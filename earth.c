@@ -719,13 +719,13 @@ void CreateShaders (EarthScreen* es)
 	es->vert[EARTH] = glCreateShader (GL_VERTEX_SHADER);
 	es->frag[EARTH] = glCreateShader (GL_FRAGMENT_SHADER);
 	
-	es->vertfile[EARTH] = strdup (DATADIR "/earth.vert");
-	es->fragfile[EARTH] = strdup (DATADIR "/earth.frag");
+	es->vertfile[EARTH] = DATADIR "/earth.vert";
+	es->fragfile[EARTH] = DATADIR "/earth.frag";
 		
 	es->vertsource[EARTH] = LoadSource (es->vertfile[EARTH]);
-	es->fragsource[EARTH] = LoadSource (es->fragfile[EARTH]);
-	
 	glShaderSource (es->vert[EARTH], 1, (const GLchar**)&es->vertsource[EARTH], NULL);
+	
+	es->fragsource[EARTH] = LoadSource (es->fragfile[EARTH]);
 	glShaderSource (es->frag[EARTH], 1, (const GLchar**)&es->fragsource[EARTH], NULL);
 	
 	
@@ -743,8 +743,6 @@ void CreateShaders (EarthScreen* es)
 	/* Cleanup */
 	free (es->vertsource[EARTH]);
 	free (es->fragsource[EARTH]);
-	free (es->vertfile[EARTH]);
-	free (es->fragfile[EARTH]);
     }
 }
 
