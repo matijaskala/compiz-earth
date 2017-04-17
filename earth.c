@@ -331,7 +331,7 @@ earthInitScreen (CompPlugin *p,
     {
 	es->texthreaddata[i].s = s;
 	es->texthreaddata[i].num = i;
-	pthread_create (&es->texthreaddata[i].tid, NULL, LoadTexture_t, (void*) &es->texthreaddata[i]);
+	LoadTexture_t ((void*) &es->texthreaddata[i]);
     }
 
     asprintf (&imagedir, "%s%s", getenv("HOME"), "/.compiz/images");
@@ -386,7 +386,6 @@ earthInitScreen (CompPlugin *p,
     /* Join the texture images loading threads, bind the images to actual textures and free the images data */
     for (i=0; i<4; i++)
     {
-        pthread_join (es->texthreaddata[i].tid, NULL);
         if (es->imagedata[i].image)
         {
             imageBufferToTexture (s, es->tex[i], es->imagedata[i].image, es->imagedata[i].width, es->imagedata[i].height);
