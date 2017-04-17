@@ -708,6 +708,7 @@ void* DownloadClouds_t (void* threaddata)
 
 void CreateShaders (EarthScreen* es)
 {
+    struct stat st;
     /* Shader support */
     glewInit ();
     if (glewIsSupported ("GL_VERSION_2_0"))
@@ -722,11 +723,15 @@ void CreateShaders (EarthScreen* es)
 	es->vertfile[EARTH] = DATADIR "/earth.vert";
 	es->fragfile[EARTH] = DATADIR "/earth.frag";
 		
-	es->vertsource[EARTH] = LoadSource (es->vertfile[EARTH]);
-	glShaderSource (es->vert[EARTH], 1, (const GLchar**)&es->vertsource[EARTH], NULL);
+	if (stat (es->vertfile[EARTH], &st) == 0 && S_ISREG (st.st_mode)) {
+		es->vertsource[EARTH] = LoadSource (es->vertfile[EARTH]);
+		glShaderSource (es->vert[EARTH], 1, (const GLchar**)&es->vertsource[EARTH], NULL);
+	}
 	
-	es->fragsource[EARTH] = LoadSource (es->fragfile[EARTH]);
-	glShaderSource (es->frag[EARTH], 1, (const GLchar**)&es->fragsource[EARTH], NULL);
+	if (stat (es->fragfile[EARTH], &st) == 0 && S_ISREG (st.st_mode)) {
+		es->fragsource[EARTH] = LoadSource (es->fragfile[EARTH]);
+		glShaderSource (es->frag[EARTH], 1, (const GLchar**)&es->fragsource[EARTH], NULL);
+	}
 	
 	
 	glCompileShader (es->vert[EARTH]);
