@@ -125,10 +125,15 @@ earthPaintInside (CompScreen              *s,
     es->previousoutput = output->id;
     
     /* Earth position according to longitude and latitude */
-    glRotatef ((es->south_on_top?-1:1)*es->lat-90, 1, 0, 0);
-    glRotatef ((es->south_on_top?-1:1)*es->lon, 0, 0, 1);
-    if (es->south_on_top)
+    if (earthGetSouthOnTop (s)) {
+	glRotatef (-es->lat-90, 1, 0, 0);
+	glRotatef (-es->lon, 0, 0, 1);
 	glRotatef (180, 0, 1, 0);
+    }
+    else {
+	glRotatef (es->lat-90, 1, 0, 0);
+	glRotatef (es->lon, 0, 0, 1);
+    }
     
     glPushMatrix ();
     
