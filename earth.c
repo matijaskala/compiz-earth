@@ -16,7 +16,6 @@ earthScreenOptionChanged (CompScreen		*s,
 	case EarthScreenOptionLongitude:    es->lon	= earthGetLongitude (s);	break;
 	case EarthScreenOptionTimezone:	    es->tz	= earthGetTimezone (s);		break;
 	case EarthScreenOptionClouds:	    es->clouds  = earthGetClouds (s);		break;
-	case EarthScreenOptionSouthOnTop:   es->south_on_top = earthGetSouthOnTop (s);	break;
 	case EarthScreenOptionEarthSize:    es->earth_size = earthGetEarthSize (s);	break;
 	
 	case EarthScreenOptionShaders:
@@ -414,7 +413,6 @@ earthInitScreen (CompPlugin *p,
     earthSetTimezoneNotify (s, earthScreenOptionChanged);
     earthSetShadersNotify (s, earthScreenOptionChanged);
     earthSetCloudsNotify (s, earthScreenOptionChanged);
-    earthSetSouthOnTopNotify (s, earthScreenOptionChanged);
     earthSetEarthSizeNotify (s, earthScreenOptionChanged);
     
     earthScreenOptionChanged (s, earthGetShadersOption (s), EarthScreenOptionShaders);
