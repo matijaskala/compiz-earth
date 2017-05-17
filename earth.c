@@ -124,8 +124,15 @@ earthPaintInside (CompScreen              *s,
     es->previousoutput = output->id;
     
     /* Earth position according to longitude and latitude */
-    glRotatef (es->lat-90, 1, 0, 0);
-    glRotatef (es->lon, 0, 0, 1);
+    if (earthGetSouthOnTop (s)) {
+	glRotatef (-es->lat-90, 1, 0, 0);
+	glRotatef (-es->lon, 0, 0, 1);
+	glRotatef (180, 0, 1, 0);
+    }
+    else {
+	glRotatef (es->lat-90, 1, 0, 0);
+	glRotatef (es->lon, 0, 0, 1);
+    }
     
     glPushMatrix ();
     
@@ -231,8 +238,15 @@ earthClearTargetOutput (CompScreen *s,
     /* Rotate the skydome according to the mouse and the rotation of the Earth */
     glRotatef (vRotate - 90, 1.0f, 0.0f, 0.0f);
     glRotatef (xRotate, 0.0f, 0.0f, 1.0f);
-    glRotatef (es->lat, 1, 0, 0);
-    glRotatef (es->lon + 180, 0, 0, 1);
+    if (earthGetSouthOnTop (s)) {
+	glRotatef (-es->lat, 1, 0, 0);
+	glRotatef (-es->lon + 180, 0, 0, 1);
+	glRotatef (180, 0, 1, 0);
+    }
+    else {
+	glRotatef (es->lat, 1, 0, 0);
+	glRotatef (es->lon + 180, 0, 0, 1);
+    }
     
     enableTexture (s, es->tex[SKY], COMP_TEXTURE_FILTER_GOOD);
     glCallList (es->list[SKY]);
